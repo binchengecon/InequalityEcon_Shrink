@@ -70,7 +70,7 @@ print("slope={}".format(guess))
 # Save options
 saveOutput = False
 
-savefolder = 'baseline_ODEloss/Interal=[{},{}]/Slopeid_{}/learning_{}/backup_{}/'.format(args.lowerslope, args.upperslope, idd, starting_learning_rate, backup)
+savefolder = 'baseline_ODEEmbedded_loss/Interal=[{},{}]/Slopeid_{}_Slope_{}/learning_{}/backup_{}/'.format(args.lowerslope, args.upperslope, idd, guess, starting_learning_rate, backup)
 saveName   = 'Sannikov'
 saveFigure = False
 figureName = saveName
@@ -124,7 +124,7 @@ def sampler(nSim_interior, nSim_boundary):
     # t_interior = np.random.uniform(low=t_low - 0.5*(T-t_low), high=T, size=[nSim_interior, 1])
 #    t_interior = np.random.uniform(low=t_low - t_oversample, high=T, size=[nSim_interior, 1])
     # X_interior = np.random.uniform(low=X_low - 0.5*(X_high-X_low), high=X_high + 0.5*(X_high-X_low), size=[nSim_interior, 1])
-    X_interior = np.random.uniform(low=X_low-0.1, high=X_high, size=[nSim_interior, 1])
+    X_interior = np.random.uniform(low=X_low, high=X_high, size=[nSim_interior, 1])
 #    X_interior = np.random.uniform(low=X_low - X_oversample, high=X_high + X_oversample, size=[nSim_interior, 1])
 #    X_interior = np.random.uniform(low=X_low * X_multiplier_low, high=X_high * X_multiplier_high, size=[nSim_interior, 1])
 
@@ -159,14 +159,20 @@ def loss(model, X_interior, X_boundary, X_far):
     # Loss term #1: PDE
     # compute function value and derivatives at current sampled points
     V = model(X_interior)
-    V_x = tf.gradients(V, X_interior)[0]
-    V_xx = tf.gradients(V_x, X_interior)[0]
+    
+    G = 0 + guess * X_interior + V * X_interior**2
+    
+    # V_x = tf.gradients(V, X_interior)[0]
+    # V_xx = tf.gradients(V_x, X_interior)[0]
+    
+    G_x = tf.gradients(G, X_interior)[0]
+    G_xx = tf.gradients(G_x, X_interior)[0]
     
     
-    c = tf.where(V_x < 0, (V_x/2)**2, tf.zeros((nSim_interior, 1)))
+    c = tf.where(G_x < 0, (G_x/2)**2, tf.zeros((nSim_interior, 1)))
     u_c = u(c)
     
-    a_orig = 2/5 + 4/25*V_x + 2*V + 2*c - 2*V_x * X_interior+ 2*V_x * tf.sqrt(c)
+    a_orig = 2/5 + 4/25*G_x + 2*G + 2*c - 2*G_x * X_interior+ 2*G_x * tf.sqrt(c)
     
     a = tf.where(a_orig >= 0,a_orig, tf.zeros((nSim_interior, 1)))
     # a = tf.maximum(tf.zeros_like(V),a)
@@ -177,11 +183,11 @@ def loss(model, X_interior, X_boundary, X_far):
     gamma_a = gamma(a)
     
     
-    Upper = V - a + c - V_x * (X_interior - u_c +h_a)
+    Upper = G - a + c - G_x * (X_interior - u_c +h_a)
     Lower = r*gamma_a**2 * sigma**2/2
     
     # diff_V = Upper/Lower - V_xx
-    diff_V = Upper - V_xx * Lower
+    diff_V = Upper - G_xx * Lower
 
     # concave_V = tf.maximum(V_xx, tf.zeros_like(V))
 
@@ -191,23 +197,27 @@ def loss(model, X_interior, X_boundary, X_far):
     # Loss term #2: boundary condition
         # no boundary condition for this problem
     
-    fitted_boundary = model(X_boundary)
+    # fitted_boundary = model(X_boundary)
     
-    fitted_boundary_W = tf.gradients(
-        fitted_boundary, X_boundary)[0]
+    # fitted_boundary_W = tf.gradients(
+    #     fitted_boundary, X_boundary)[0]
     
-    target_boundary = F0(X_boundary)
-    target_boundary_W = guess
+    # target_boundary = F0(X_boundary)
+    # target_boundary_W = guess
 
     
-    L2_0 = tf.reduce_mean( tf.square(fitted_boundary - target_boundary) )
-    L2_1 = tf.reduce_mean( tf.square(fitted_boundary_W - target_boundary_W) )
+    # L2_0 = tf.reduce_mean( tf.square(fitted_boundary - target_boundary) )
+    # L2_1 = tf.reduce_mean( tf.square(fitted_boundary_W - target_boundary_W) )
     
     fitted_boundary_far = model(X_far)
     
-    L2_3 = tf.reduce_mean(tf.square(tf.maximum(fitted_boundary_far,tf.zeros_like(fitted_boundary_far))))
+    G_fitted_boundary_far = 0 + guess * X_far + fitted_boundary_far * X_far**2
+
+
+    L2_3 = tf.reduce_mean(tf.square(tf.maximum(G_fitted_boundary_far,tf.zeros_like(G_fitted_boundary_far))))
     
-    L2 = L2_0 + L2_1 + L2_3
+    # L2 = L2_0 + L2_1 + L2_3
+    L2 = L2_3
 
 
     return L1, L2
@@ -232,34 +242,41 @@ loss_tnsr = L1_tnsr +  L2_tnsr
 
 # value function
 V = model(X_interior_tnsr)
-V_x = tf.gradients(V, X_interior_tnsr)[0]
+# V_x = tf.gradients(V, X_interior_tnsr)[0]
+G = 0 + guess * X_interior_tnsr + V * X_interior_tnsr**2
 
-# optimal control computed numerically from fitted value function 
-def control_a(V):
+# V_x = tf.gradients(V, X_interior)[0]
+# V_xx = tf.gradients(V_x, X_interior)[0]
+
+G_x = tf.gradients(G, X_interior_tnsr)[0]
+G_xx = tf.gradients(G_x, X_interior_tnsr)[0]
     
-    V_x = tf.gradients(V, X_interior_tnsr)[0]
+    
+# optimal control computed numerically from fitted value function 
+def control_a(G,G_x):
+    
     # V_xx = tf.gradients(V_x, X_interior_tnsr)[0]
     
-    c = tf.where(V_x < 0, (V_x/2)**2, tf.zeros_like(V))
+    c = tf.where(G_x < 0, (G_x/2)**2, tf.zeros_like(G))
     u_c = u(c)
     
-    a_orig = 2/5 + 4/25*V_x + 2*V + 2*c - 2*V_x * X_interior_tnsr+ 2*V_x * tf.sqrt(c)
+    a_orig = 2/5 + 4/25*G_x + 2*G + 2*c - 2*G_x * X_interior_tnsr+ 2*G_x * tf.sqrt(c)
     
     a = tf.where(a_orig >= 0, a_orig, tf.zeros_like(V))
     
     return a
 
-def control_c(V):
+def control_c(G,G_x):
     # length = V.shape[0]
-    V_x = tf.gradients(V, X_interior_tnsr)[0]
+    # V_x = tf.gradients(V, X_interior_tnsr)[0]
     # V_xx = tf.gradients(V_x, X_interior_tnsr)[0]
     
-    c = tf.where(V_x < 0, (V_x/2)**2, tf.zeros_like(V))
+    c = tf.where(G_x < 0, (G_x/2)**2, tf.zeros_like(V))
 
     return c
 
-numerical_a = control_a(V)
-numerical_c = control_c(V)
+numerical_a = control_a(G,G_x)
+numerical_c = control_c(G,G_x)
 
 # set optimizer - NOTE THIS IS DIFFERENT FROM OTHER APPLICATIONS!
 global_step = tf.Variable(0, trainable=False)
@@ -313,7 +330,7 @@ for i in range(sampling_stages):
 
         # simulate process at current t 
 
-        fitted_V = sess.run([V], feed_dict= {X_interior_tnsr:X_plot})[0]
+        fitted_V = sess.run([G], feed_dict= {X_interior_tnsr:X_plot})[0]
         fitted_a = sess.run([numerical_a], feed_dict= {X_interior_tnsr:X_plot})[0]
         fitted_c = sess.run([numerical_c], feed_dict= {X_interior_tnsr:X_plot})[0]
         B_W = r*(X_plot-fitted_c**(1/2)+fitted_a**2/2+2*fitted_a/5)
@@ -369,8 +386,8 @@ maxcount = 100
 while error > tol and count < maxcount:
     
     
-    Va = sess.run([V], feed_dict= {X_interior_tnsr:a})[0]
-    Vb = sess.run([V], feed_dict= {X_interior_tnsr:b})[0]
+    Va = sess.run([G], feed_dict= {X_interior_tnsr:a})[0]
+    Vb = sess.run([G], feed_dict= {X_interior_tnsr:b})[0]
     
     f0 = Va - F0(a)
     f1 = Vb - F0(b)
@@ -380,7 +397,7 @@ while error > tol and count < maxcount:
         c = a+b
         c = c/2
         
-        Vc = sess.run([V], feed_dict= {X_interior_tnsr:c})[0]
+        Vc = sess.run([G], feed_dict= {X_interior_tnsr:c})[0]
 
         fc = Vc - F0(c)
         
@@ -401,8 +418,8 @@ while error > tol and count < maxcount:
 
 
         
-Vc = sess.run([V], feed_dict= {X_interior_tnsr:c})[0]
-dVc = sess.run([V_x], feed_dict= {X_interior_tnsr:c})[0]
+Vc = sess.run([G], feed_dict= {X_interior_tnsr:c})[0]
+dVc = sess.run([G_x], feed_dict= {X_interior_tnsr:c})[0]
 
 
 L2_0 = Vc-F0(c)
@@ -437,7 +454,7 @@ X_plot = X_plot.reshape(-1,1)
 
 # simulate process at current t 
 
-fitted_V = sess.run([V], feed_dict= {X_interior_tnsr:X_plot})[0]
+fitted_V = sess.run([G], feed_dict= {X_interior_tnsr:X_plot})[0]
 fitted_a = sess.run([numerical_a], feed_dict= {X_interior_tnsr:X_plot})[0]
 fitted_c = sess.run([numerical_c], feed_dict= {X_interior_tnsr:X_plot})[0]
 B_W = r*(X_plot-fitted_c**(1/2)+fitted_a**2/2+2*fitted_a/5)
@@ -463,7 +480,8 @@ axs["right down"].plot(X_plot, fitted_drift, color = 'red')
 axs["right down"].set_ylim(0, 0.1)
 axs["right down"].set_title("Drift of $W$")
 axs["right down"].grid(linestyle=':')
-    
+
+
 # plt.savefig(figureName + '_All.png')
 plt.savefig('./Figure/' +savefolder+ '/' + figureName + '_All_IP_{}_dFdiff_{}.png'.format(c,L2_1))
 

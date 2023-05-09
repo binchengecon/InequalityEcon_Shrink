@@ -4,30 +4,35 @@
 # python_name="MollProblem_mercury_DCGM2_IneqLower_MFG_2NN.py" # 3 dmg
 
 # python_name="MollProblem_mercury_DCGM2_IneqLower_MFG_pseudo.py" # 3 dmg
-python_name="MollProblem_mercury_DCGM2_IneqLower_controlmini.py"
-# python_name="MollProblem_mercury_DCGM2_IneqLower_control_vaupwind.py"
+# python_name="MollProblem_mercury_DCGM2_IneqLower_controlmini.py"
+# python_name="MollProblem_mercury_DCGM2_IneqLower_control_vaupwind_test1.py"
+python_name="MollProblem_mercury_DCGM2_IneqLower_control_vaupwind_test1_weight.py"
+# python_name="MollProblem_mercury_DCGM2_IneqLower_control_vaupwind_test2.py"
 
+
+# num_layers_FFNN_arr=(0 4 5 6 7 8)
+# activation_FFNN_arr=("tanh")
+# num_layers_RNN_arr=(0 3)
+# nodes_per_layer_arr=(20 40 50)
+
+
+# num_layers_FFNN_arr=(5 6 7)
+# activation_FFNN_arr=("tanh")
+# num_layers_RNN_arr=(0)
+# nodes_per_layer_arr=(40 50)
 
 num_layers_FFNN_arr=(0)
 activation_FFNN_arr=("tanh")
 num_layers_RNN_arr=(3)
-
-# # nodes_per_layer_arr=(40 50 60)
-# nodes_per_layer_arr=(50)
-
-
-
-# num_layers_FFNN_arr=(4 5 6 7 8)
-# activation_FFNN_arr=("tanh" "relu")
-# num_layers_RNN_arr=(0)
-
-# nodes_per_layer_arr=(40 50 60)
 nodes_per_layer_arr=(50)
-# nodes_per_layer_arr=(20 30 40 50)
 
 
-sampling_stages_arr=(30000 80000)
-# sampling_stages_arr=(30000)
+
+
+
+
+sampling_stages_arr=(80000)
+# sampling_stages_arr=(10)
 # sampling_stages_arr=(30000 50000)
 steps_per_sample_arr=(10)
 # steps_per_sample_arr=(8)
@@ -40,19 +45,21 @@ steps_per_sample_arr=(10)
 # nSim_boundary_arr=(32)
 
 nSim_interior_arr=(1024)
-nSim_boundary_arr=(64)
+nSim_boundary_arr=(128)
 
 LearningRate_arr=(0.001)
 # LearningRate_arr=(0.001)
 
-
+# weightarr=(1 5 10 50 100)
+weightarr=(50 200 500 1000 10000)
 LENGTH_layers=$((${#num_layers_arr[@]} - 1))
 LENGTH_nodes=$((${#nodes_per_layer_arr[@]} - 1))
+LENGTH_weight=$((${#weightarr[@]} - 1))
 
 
 count=0
 
-num_run=5
+num_run=3
 ID_num_run=$((num_run - 1))
 
 
@@ -66,20 +73,22 @@ for num_layers_FFNN in ${num_layers_FFNN_arr[@]}; do
                             for nSim_boundary in ${nSim_boundary_arr[@]}; do
                                 for LearningRate in ${LearningRate_arr[@]}; do
                                     for id in $(seq 0 $ID_num_run); do
-                                        action_name="num_layers_FFNN_${num_layers_FFNN}_activation_FFNN_${activation_FFNN}_num_layers_RNN_${num_layers_RNN}_nodes_per_layer_${nodes_per_layer}/sampling_stages_${sampling_stages}_steps_per_sample_${steps_per_sample}/nSim_interior_${nSim_interior}_nSim_boundary_${nSim_boundary}/LearningRate_${LearningRate}"
+                                        for weight in ${weightarr[@]}; do
+
+                                            action_name="num_layers_FFNN_${num_layers_FFNN}_activation_FFNN_${activation_FFNN}_num_layers_RNN_${num_layers_RNN}_nodes_per_layer_${nodes_per_layer}/sampling_stages_${sampling_stages}_steps_per_sample_${steps_per_sample}/nSim_interior_${nSim_interior}_nSim_boundary_${nSim_boundary}/LearningRate_${LearningRate}_weight_${weight}"
 
 
-                                        mkdir -p ./job-outs/${python_name}/${action_name}/
+                                            mkdir -p ./job-outs/${python_name}/${action_name}/
 
-                                        if [ -f ./bash/${python_name}/${action_name}/train.sh ]; then
-                                            rm ./bash/${python_name}/${action_name}/train.sh
-                                        fi
+                                            if [ -f ./bash/${python_name}/${action_name}/train.sh ]; then
+                                                rm ./bash/${python_name}/${action_name}/train.sh
+                                            fi
 
-                                        mkdir -p ./bash/${python_name}/${action_name}/
+                                            mkdir -p ./bash/${python_name}/${action_name}/
 
-                                        touch ./bash/${python_name}/${action_name}/train.sh
+                                            touch ./bash/${python_name}/${action_name}/train.sh
 
-                                        tee -a ./bash/${python_name}/${action_name}/train.sh <<EOF
+                                            tee -a ./bash/${python_name}/${action_name}/train.sh <<EOF
 #! /bin/bash
 
 ######## login
@@ -102,7 +111,7 @@ echo "Program starts \$(date)"
 start_time=\$(date +%s)
 # perform a task
 
-python3 -u  /home/bincheng/InequalityEcon/$python_name --num_layers_FFNN ${num_layers_FFNN} --activation_FFNN ${activation_FFNN} --num_layers_RNN ${num_layers_RNN} --nodes_per_layer ${nodes_per_layer}  --sampling_stages ${sampling_stages} --steps_per_sample ${steps_per_sample} --nSim_interior ${nSim_interior} --nSim_boundary  ${nSim_boundary}  --LearningRate ${LearningRate} --id ${id}
+python3 -u  /home/bincheng/InequalityEcon/$python_name --num_layers_FFNN ${num_layers_FFNN} --activation_FFNN ${activation_FFNN} --num_layers_RNN ${num_layers_RNN} --nodes_per_layer ${nodes_per_layer}  --sampling_stages ${sampling_stages} --steps_per_sample ${steps_per_sample} --nSim_interior ${nSim_interior} --nSim_boundary  ${nSim_boundary}  --LearningRate ${LearningRate} --id ${id} --weight ${weight}
 
 echo "Program ends \$(date)"
 end_time=\$(date +%s)
@@ -125,4 +134,5 @@ EOF
             done
         done
     done
+done
 done

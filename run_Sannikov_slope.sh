@@ -4,22 +4,32 @@
 # python_name="SannikovProblem.py" # 3 dmg
 # python_name="SannikovProblem_findX.py" # 3 dmg
 # python_name="SannikovProblem_findX_Concave.py" # 3 dmg
-python_name="SannikovProblem_findX_Concave_ODEloss.py" # 3 dmg
+# python_name="SannikovProblem_findX_Concave_ODEloss.py" # 3 dmg
+# python_name="SannikovProblem_findX_Concave_ODEloss2.py" # 3 dmg
+python_name="SannikovProblem_findX_Concave_ODEloss3.py" # 3 dmg
 
 
 count=0
 
-num_run=100
+num_run=10
+# num_run=50
 ID_num_run=$((num_run - 1))
 
 lowerslope=2
 # upperslope=10
 upperslope=2.5
 
+
+# lowerslope=2.4
+# # upperslope=10
+# upperslope=2.6
+
+
 num_backup=1
 ID_num_backup=$((num_backup - 1))
 
-learningarr=(0.001)
+learningarr=(0.01 0.001 0.0001)
+# learningarr=(0.001)
 
 for learning in ${learningarr[@]}; do
     for id_backup in $(seq 0 $ID_num_backup); do
