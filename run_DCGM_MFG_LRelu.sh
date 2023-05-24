@@ -2,10 +2,7 @@
 
 
 
-python_name="MollProblem_Simple.py"
-# python_name="MollProblem_Simple_Eq.py"
-# python_name="MollProblem_Simple_penalty.py"
-# python_name="MollProblem_Simple_varineq.py"
+python_name="MollProblem_Leakyrelu.py"
 
 
 # python_name="MollProblem_Simple_punishalower_max.py"
@@ -30,10 +27,19 @@ python_name="MollProblem_Simple.py"
 # nodes_per_layer_arr=(50)
 
 
-num_layers_FFNN_arr=(4)
-activation_FFNN_arr=("tanh")
+
+num_layers_FFNN_arr=(4 5 6 7)
+activation_FFNN_arr=("leaky_relu")
 num_layers_RNN_arr=(0)
-nodes_per_layer_arr=(50)
+nodes_per_layer_arr=(40 50)
+FFNN_alpha_arr=(0.1 0.01)
+
+
+# num_layers_FFNN_arr=(2 3)
+# activation_FFNN_arr=("leaky_relu")
+# num_layers_RNN_arr=(3)
+# nodes_per_layer_arr=(50)
+# FFNN_alpha_arr=(0.1 0.01)
 
 
 # num_layers_FFNN_arr=(0)
@@ -62,11 +68,10 @@ nSim_boundary_arr=(128)
 LearningRate_arr=(0.001)
 # LearningRate_arr=(0.001)
 
-# weightarr=(0 1 3 5 10 50 100 200 500 1000 10000)
-weightarr=(0)
-# weightarr=(200 500 1000 10000)
+# weightarr=(1 5 10 50 100)
+# weightarr=(50 200 500 1000 10000)
 # weightarr=(10000)
-# weightarr=(50)
+weightarr=(50)
 LENGTH_layers=$((${#num_layers_arr[@]} - 1))
 LENGTH_nodes=$((${#nodes_per_layer_arr[@]} - 1))
 LENGTH_weight=$((${#weightarr[@]} - 1))
@@ -89,8 +94,9 @@ for num_layers_FFNN in ${num_layers_FFNN_arr[@]}; do
                                 for LearningRate in ${LearningRate_arr[@]}; do
                                     for id in $(seq 0 $ID_num_run); do
                                         for weight in ${weightarr[@]}; do
-
-                                            action_name="num_layers_FFNN_${num_layers_FFNN}_activation_FFNN_${activation_FFNN}_num_layers_RNN_${num_layers_RNN}_nodes_per_layer_${nodes_per_layer}/sampling_stages_${sampling_stages}_steps_per_sample_${steps_per_sample}/nSim_interior_${nSim_interior}_nSim_boundary_${nSim_boundary}/LearningRate_${LearningRate}_weight_${weight}"
+                                            for FFNN_alpha in ${FFNN_alpha_arr[@]}; do
+                                            
+                                            action_name="num_layers_FFNN_${num_layers_FFNN}_activation_FFNN_${activation_FFNN}_num_layers_RNN_${num_layers_RNN}_nodes_per_layer_${nodes_per_layer}_FFNN_alpha_${FFNN_alpha}/sampling_stages_${sampling_stages}_steps_per_sample_${steps_per_sample}/nSim_interior_${nSim_interior}_nSim_boundary_${nSim_boundary}/LearningRate_${LearningRate}_weight_${weight}"
 
 
                                             mkdir -p ./job-outs/${python_name}/${action_name}/
@@ -126,7 +132,7 @@ echo "Program starts \$(date)"
 start_time=\$(date +%s)
 # perform a task
 
-python3 -u  /home/bincheng/InequalityEcon/$python_name --num_layers_FFNN ${num_layers_FFNN} --activation_FFNN ${activation_FFNN} --num_layers_RNN ${num_layers_RNN} --nodes_per_layer ${nodes_per_layer}  --sampling_stages ${sampling_stages} --steps_per_sample ${steps_per_sample} --nSim_interior ${nSim_interior} --nSim_boundary  ${nSim_boundary}  --LearningRate ${LearningRate} --id ${id} --weight ${weight}
+python3 -u  /home/bincheng/InequalityEcon/$python_name --num_layers_FFNN ${num_layers_FFNN} --activation_FFNN ${activation_FFNN} --num_layers_RNN ${num_layers_RNN} --nodes_per_layer ${nodes_per_layer}  --FFNN_alpha ${FFNN_alpha} --sampling_stages ${sampling_stages} --steps_per_sample ${steps_per_sample} --nSim_interior ${nSim_interior} --nSim_boundary  ${nSim_boundary}  --LearningRate ${LearningRate} --id ${id} --weight ${weight}
 
 echo "Program ends \$(date)"
 end_time=\$(date +%s)
@@ -149,5 +155,6 @@ EOF
             done
         done
     done
+done
 done
 done

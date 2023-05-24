@@ -366,7 +366,7 @@ class DCGM2Net(tf.keras.Model):
 class DCGM3Net(tf.keras.Model):
 
     # constructor/initializer function (automatically called when new instance of class is created)
-    def __init__(self, X_low, X_high, layer_width, n_layers_FFNN, n_layers_RNN, input_dim, output_dim, activation_FFNN, final_trans=None):
+    def __init__(self, X_low, X_high, layer_width, n_layers_FFNN, n_layers_RNN, input_dim, activation_FFNN, final_trans=None):
         '''
         Args:
             layer_width: 
@@ -384,7 +384,7 @@ class DCGM3Net(tf.keras.Model):
         # NOTE: to account for time inputs we use input_dim+1 as the input dimensionality
         self.n_layers_FFNN = n_layers_FFNN
         self.n_layers_RNN = n_layers_RNN
-        self.output_dim = output_dim
+
 
         # define scaling layer: for standarization
 
@@ -408,11 +408,11 @@ class DCGM3Net(tf.keras.Model):
 
         # define final layer as fully connected with a single output (function value)
         self.final_layer = DenseLayer(
-            output_dim, layer_width, transformation=final_trans)
+            1, layer_width, transformation=final_trans)
 
     # main function to be called
 
-    def call(self, x):
+    def __call__(self, x):
         '''            
         Args:
             x: sampled space inputs
@@ -434,9 +434,11 @@ class DCGM3Net(tf.keras.Model):
         Inter_S = S
             
         for i in range(self.n_layers_FFNN):
-            S = self.DenseLayerList[i].call(S)
+            S = self.DenseLayerList[i].call(S) + S
             
         # call final layers
         result = self.final_layer.call(S+Inter_S)
 
         return result
+
+

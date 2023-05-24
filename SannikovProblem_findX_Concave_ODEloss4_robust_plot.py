@@ -35,7 +35,7 @@ plt.rcParams["savefig.bbox"] = "tight"
 # plt.rcParams["figure.dpi"] = 500
 plt.rcParams["font.size"] = 20
 # plt.rcParams["legend.frameon"] = True
-plt.rcParams["lines.linewidth"] = 2.5
+plt.rcParams["lines.linewidth"] = 4
 
 #%% Parameters 
 
@@ -180,7 +180,7 @@ for id in range(len(slopearr)):
     color_one = colors[id % len(colors)]
 
     axs["left column"].plot(X_plot, fitted_V, color = color_one, label = "$\\xi={}$".format(xiarr[id]))
-    axs["left column"].plot(X_plot, ODE_F, color = 'black', linestyle=':')
+    axs["left column"].plot(X_plot, ODE_F, color = 'black', linestyle='--')
     axs["left column"].set_ylim(-1,0.15)
     axs["left column"].plot(X_plotF0, F0(X_plotF0), color = 'black')
     axs["left column"].set_xlim(X_low,X_high)
@@ -189,14 +189,14 @@ for id in range(len(slopearr)):
     axs["left column"].legend()
 
     axs["right top"].plot(X_plot, fitted_a, color = color_one, label = "$\\xi={}$".format(xiarr[id]))
-    axs["right top"].plot(X_plot, ODE_a, color = 'black', linestyle=':')
+    axs["right top"].plot(X_plot, ODE_a, color = 'black', linestyle='--')
     axs["right top"].set_ylim(0,1)
     axs["right top"].set_xlim(X_low,X_high)
     axs["right top"].set_title("Effort $\\alpha(W)$")
     axs["right top"].grid(linestyle=':')
 
     axs["right mid"].plot(X_plot, fitted_c, color = color_one, label = "$\\xi={}$".format(xiarr[id]))
-    axs["right mid"].plot(X_plot, ODE_c, color = 'black', linestyle=':')
+    axs["right mid"].plot(X_plot, ODE_c, color = 'black', linestyle='--')
     axs["right mid"].set_ylim(0, 1)
     axs["right mid"].set_xlim(X_low,X_high)
     axs["right mid"].set_title("Consumption $\\pi(W)$")
@@ -204,7 +204,7 @@ for id in range(len(slopearr)):
 
 
     axs["right dis"].plot(X_plot, fitted_h, color = color_one, label = "$\\xi={}$".format(xiarr[id]))
-    axs["right dis"].plot(X_plot, ODE_h, color = 'black', linestyle=':')
+    axs["right dis"].plot(X_plot, ODE_h, color = 'black', linestyle='--')
     # axs["right down"].set_ylim(0, 0.1)
     axs["right dis"].set_xlim(X_low,X_high)
     axs["right dis"].set_title("Distortion $h(W)$")
@@ -213,7 +213,7 @@ for id in range(len(slopearr)):
 
 
     axs["right down"].plot(X_plot, fitted_drift, color = color_one, label = "$\\xi={}$".format(xiarr[id]))
-    axs["right down"].plot(X_plot, ODE_drift, color = 'black', linestyle=':')
+    axs["right down"].plot(X_plot, ODE_drift, color = 'black', linestyle='--')
     # axs["right down"].set_ylim(0, 0.1)
     axs["right down"].set_xlim(X_low,X_high)
     axs["right down"].set_title("Drift of $W$")
@@ -221,7 +221,7 @@ for id in range(len(slopearr)):
 
 
 
-plt.savefig('./Figure/' +savefolder+ '/' + figureName + '_All_{}.png'.format(len(xiarr)))
+plt.savefig('./Figure/' +savefolder+ '/' + figureName + '_All_{}.pdf'.format(len(xiarr)))
 
 plt.close('all')        
 
@@ -293,7 +293,7 @@ for id in range(len(slopearr)):
     axs["down"].set_xlim(X_low,X_high)
     axs["down"].legend()
 
-plt.savefig('./Figure/' +savefolder+ '/' + figureName + '_Diff_{}.png'.format(len(xiarr)))
+plt.savefig('./Figure/' +savefolder+ '/' + figureName + '_Diff_{}.pdf'.format(len(xiarr)))
 
 plt.close('all')        
             
@@ -369,7 +369,7 @@ for id in range(len(slopearr)):
 
 
     axs["left column"].plot(X_plot, fitted_V, color = color_one, label = "$\\xi={}$".format(xiarr[id]))
-    axs["left column"].plot(X_plot, ODE_F, color = 'black', linestyle=':')
+    axs["left column"].plot(X_plot, ODE_F, color = 'black', linestyle='--')
     axs["left column"].set_ylim(-1,0.15)
     axs["left column"].plot(X_plotF0, F0(X_plotF0), color = 'black')
     axs["left column"].set_xlim(X_low,X_high)
@@ -378,14 +378,14 @@ for id in range(len(slopearr)):
     axs["left column"].legend()
 
     axs["right top"].plot(X_plot, fitted_a, color = color_one, label = "$\\xi={}$".format(xiarr[id]))
-    axs["right top"].plot(X_plot, ODE_a, color = 'black', linestyle=':')
+    axs["right top"].plot(X_plot, ODE_a, color = 'black', linestyle='--')
     axs["right top"].set_ylim(0,1)
     axs["right top"].set_xlim(X_low,X_high)
     axs["right top"].set_title("Effort $\\alpha(W)$")
     axs["right top"].grid(linestyle=':')
 
     axs["right mid"].plot(X_plot, fitted_c, color = color_one, label = "$\\xi={}$".format(xiarr[id]))
-    axs["right mid"].plot(X_plot, ODE_c, color = 'black', linestyle=':')
+    axs["right mid"].plot(X_plot, ODE_c, color = 'black', linestyle='--')
     axs["right mid"].set_ylim(0, 1)
     axs["right mid"].set_xlim(X_low,X_high)
     axs["right mid"].set_title("Consumption $\\pi(W)$")
@@ -393,7 +393,7 @@ for id in range(len(slopearr)):
 
 
     axs["right dis"].plot(X_plot, fitted_h, color = color_one, label = "$\\xi={}$".format(xiarr[id]))
-    axs["right dis"].plot(X_plot, ODE_h, color = 'black', linestyle=':')
+    axs["right dis"].plot(X_plot, ODE_h, color = 'black', linestyle='--')
     # axs["right down"].set_ylim(0, 0.1)
     axs["right dis"].set_xlim(X_low,X_high)
     axs["right dis"].set_title("Distortion $h(W)$")
@@ -402,7 +402,7 @@ for id in range(len(slopearr)):
 
 
     axs["right down"].plot(X_plot, fitted_drift, color = color_one, label = "$\\xi={}$".format(xiarr[id]))
-    axs["right down"].plot(X_plot, ODE_drift, color = 'black', linestyle=':')
+    axs["right down"].plot(X_plot, ODE_drift, color = 'black', linestyle='--')
     axs["right down"].set_ylim(-0.1, 0.1)
     axs["right down"].set_xlim(X_low,X_high)
     axs["right down"].set_title("Drift of $W$")
@@ -410,7 +410,7 @@ for id in range(len(slopearr)):
 
 
 
-plt.savefig('./Figure/' +savefolder+ '/' + figureName + '_All_Stop_{}.png'.format(len(xiarr)))
+plt.savefig('./Figure/' +savefolder+ '/' + figureName + '_All_Stop_{}.pdf'.format(len(xiarr)))
 
 plt.close('all')        
 
@@ -507,7 +507,7 @@ for id in range(len(slopearr)):
     axs["down"].set_xlim(X_low,X_high)
     axs["down"].legend()
 
-plt.savefig('./Figure/' +savefolder+ '/' + figureName + '_Diff_Stop_{}.png'.format(len(xiarr)))
+plt.savefig('./Figure/' +savefolder+ '/' + figureName + '_Diff_Stop_{}.pdf'.format(len(xiarr)))
 
 plt.close('all')        
             

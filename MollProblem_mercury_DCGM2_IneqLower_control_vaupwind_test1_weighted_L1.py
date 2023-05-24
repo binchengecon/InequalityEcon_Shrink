@@ -72,7 +72,7 @@ n_plot = 600  # Points on plot grid for each dimension
 
 # Save options
 saveOutput = False
-savefolder = 'Moll_controlva_test1_weight/num_layers_FFNN_{}_activation_FFNN_{}_num_layers_RNN_{}_nodes_per_layer_{}/sampling_stages_{}_steps_per_sample_{}_starting_learning_rate_{}_weight_{}/nSim_interior_{}_nSim_boundary_{}/id_{}/'.format(num_layers_FFNN, activation_FFNN, num_layers_RNN, nodes_per_layer, sampling_stages, steps_per_sample, starting_learning_rate, weight, nSim_interior, nSim_boundary, idd)
+savefolder = 'Moll_control_weightedL1/num_layers_FFNN_{}_activation_FFNN_{}_num_layers_RNN_{}_nodes_per_layer_{}/sampling_stages_{}_steps_per_sample_{}_starting_learning_rate_{}_weight_{}/nSim_interior_{}_nSim_boundary_{}/id_{}/'.format(num_layers_FFNN, activation_FFNN, num_layers_RNN, nodes_per_layer, sampling_stages, steps_per_sample, starting_learning_rate, weight, nSim_interior, nSim_boundary, idd)
 saveName   = 'MollProblem' 
 saveFigure = True
 figureName = 'MollProblem' 
@@ -83,6 +83,9 @@ os.makedirs('./Figure/'+savefolder+'/',exist_ok=True)
 os.makedirs('./SavedNets/' +savefolder+ '/', exist_ok=True)
 # market price of risk
 
+Moll_Va = pd.read_csv("./MollData/Va_Upwind.csv", header = None)
+print(Moll_Va.shape)
+Moll_Va = np.array(Moll_Va)
 
 def u(c):
     return c**(1-gamma)/(1-gamma)
@@ -132,9 +135,8 @@ def sampler(nSim_interior, nSim_boundary):
     z_SC_upper = np.random.uniform(
         low=X_low[1], high=X_high[1], size=[nSim_boundary, 1])
 
-    a_SC_lower = X_low[0] * np.ones((nSim_boundary, 1))
-    z_SC_lower = np.random.uniform(
-        low=0, high=1, size=[nSim_boundary, 1])**2 * (X_high[1]-X_low[1]) + X_low[1]
+    a_SC_lower = np.random.uniform(low=0, high=1, size=[nSim_boundary, 1])**2 * (1-(X_low[0] )) + X_low[0] 
+    z_SC_lower = np.random.uniform(low=0, high=1, size=[nSim_boundary, 1])**2 * (X_high[1]-X_low[1]) + X_low[1]
 
 
     return a_interior, z_interior, a_interior_lower, z_interior_lower, a_NBC, z_NBC, a_SC_upper, z_SC_upper, a_SC_lower, z_SC_lower
@@ -152,91 +154,83 @@ def loss(model, a_interior, z_interior, a_interior_lower, z_interior_lower, a_NB
         t_terminal: sampled time points at terminal point (vector of terminal times)
         X_terminal: sampled space points at terminal time
     ''' 
-    # length = X_interior.shape[0]
-    # Loss term #1: PDE
-    # compute function value and derivatives at current sampled points
-    # print(X_interior.shape, X_interior[:, 0:1].shape, X_interior[:, 1:2].shape)
+
     
     V = model(tf.stack([a_interior[:,0], z_interior[:,0]], axis=1))
-    # V = model(a_interior, z_interior)
     V_a = tf.gradients(V, a_interior)[0]
     V_aa = tf.gradients(V_a, a_interior)[0]
     V_z = tf.gradients(V, z_interior)[0]
     V_zz = tf.gradients(V_z, z_interior)[0]
-     
-     
     V_a = tf.maximum(1e-10 * tf.ones_like(V), V_a)
     
     c = u_deriv_inv(V_a)
-
     u_c = u(c) 
-    
     
     diff_V = -rho*V+u_c+V_a * \
         (z_interior+r*a_interior-c)+(-the*tf.math.log(z_interior)+sig2/2)*z_interior*V_z + sig2*z_interior**2/2*V_zz
 
     concave_V = tf.maximum(V_aa, tf.zeros_like(V))
-    # compute average L2-norm of differential operator
-    L1 = tf.reduce_mean(tf.square(diff_V))  + tf.reduce_mean(tf.square(concave_V))
+
+    weight = 100*tf.square(z_interior-(zmean+0.05)) + 1
+    weight_sum = tf.reduce_sum(weight,axis=0,keepdims=True)
+    
+    weighted = weight/weight_sum
+
+    L1 = tf.reduce_sum(tf.abs(diff_V) * weighted)
+    # L1 = tf.reduce_mean(tf.square(diff_V))  
+    
+    
+    L1 += tf.reduce_mean(tf.abs(concave_V))
+
+    
     
     V_lower = model(tf.stack([a_interior_lower[:,0], z_interior_lower[:,0]], axis=1))
-    # V = model(a_interior, z_interior)
     V_a_lower = tf.gradients(V_lower, a_interior_lower)[0]
     V_aa_lower = tf.gradients(V_a_lower, a_interior_lower)[0]
     V_z_lower = tf.gradients(V_lower, z_interior_lower)[0]
     V_zz_lower = tf.gradients(V_z_lower, z_interior_lower)[0]
-     
     V_a_lower = tf.maximum(1e-10 * tf.ones_like(V_lower), V_a_lower)
 
     index1 = tf.cast(V_a_lower < u_deriv_inv(z_interior_lower+ r* a_interior_lower), tf.float32) 
     index2 = tf.cast(V_a_lower >= u_deriv_inv(z_interior_lower+ r* a_interior_lower), tf.float32)
-    
     V_a_lower_new = u_deriv_inv(z_interior_lower+ r* a_interior_lower) * index1 + V_a_lower * index2
     
     c_lower = u_deriv_inv(V_a_lower_new)
-
     u_c_lower = u(c_lower) 
     
     
     diff_V_lower = -rho*V_lower+u_c_lower+V_a_lower * \
         (z_interior_lower+r*a_interior_lower-c_lower)+(-the*tf.math.log(z_interior_lower)+sig2/2)*z_interior_lower*V_z_lower + sig2*z_interior_lower**2/2*V_zz_lower
 
-    # diff_V_lower = -rho*V_lower+u_c_lower+V_a_lower_new * \
-    #     (z_interior_lower+r*a_interior_lower-c_lower)+(-the*tf.math.log(z_interior_lower)+sig2/2)*z_interior_lower*V_z_lower + sig2*z_interior_lower**2/2*V_zz_lower
 
-    # L1 += tf.reduce_mean(tf.square(diff_V_lower)) 
-    
-    
+
     # Loss term #2: boundary condition
-        # no boundary condition for this problem
+    
     fitted_boundary_NBC = model(tf.stack([a_NBC[:,0], z_NBC[:,0]], axis=1))
-    # fitted_boundary_NBC = model(a_NBC, z_NBC)
-    # fitted_boundary_NBC_a = tf.gradients(
-    #     fitted_boundary_NBC, X_boundary_NBC[:,0:1])[0]
-
     fitted_boundary_NBC_z = tf.gradients(
         fitted_boundary_NBC, z_NBC)[0]
-
-    L2 = tf.reduce_mean( tf.square(fitted_boundary_NBC_z ) )
+    L2 = tf.reduce_mean( tf.abs(fitted_boundary_NBC_z ) )
     
 
     # Loss term #3: initial/terminal condition
 
-    # fitted_boundary_SC_lower = model(
-    #     tf.stack([a_SC_lower[:,0], z_SC_lower[:,0]], axis=1))
-
-    # # fitted_boundary_SC_lower = model(a_SC_lower[:,0], z_SC_lower[:,0])
-    # fitted_boundary_SC_lower_a = tf.gradients(
-    #     fitted_boundary_SC_lower, a_SC_lower)[0]
-    # opt_boundary_SC_lower_a = tf.minimum(fitted_boundary_SC_lower_a - u_deriv(
-    #     z_SC_lower+r*a_SC_lower), tf.zeros_like(fitted_boundary_SC_lower))
+    V_SC_lower = model(tf.stack([a_SC_lower[:,0], z_SC_lower[:,0]], axis=1))
     
-    # L3_lower = tf.reduce_mean(tf.square(opt_boundary_SC_lower_a))
-
-    L3_lower = tf.reduce_mean( tf.zeros_like(fitted_boundary_NBC ) )
-    # L3_lower = tf.reduce_mean(tf.square(fitted_boundary_SC_lower_a - u_deriv(
-    # z_SC_lower+r*a_SC_lower)))
+    V_SC_lower_a = tf.gradients(V_SC_lower, a_SC_lower)[0]
+    V_SC_lower_aa = tf.gradients(V_SC_lower_a, a_SC_lower)[0]
+    V_SC_lower_z = tf.gradients(V_SC_lower, z_SC_lower)[0]
+    V_SC_lower_zz = tf.gradients(V_SC_lower_z, z_SC_lower)[0]
+    V_SC_lower_a = tf.maximum(1e-10 * tf.ones_like(V_SC_lower), V_SC_lower_a)
     
+    c_SC_lower = u_deriv_inv(V_SC_lower_a)
+    u_c_SC_lower = u(c_SC_lower) 
+    
+    diff_V_SC_lower = -rho*V_SC_lower+u_c_SC_lower+V_SC_lower_a * \
+        (z_SC_lower+r*a_SC_lower-c_SC_lower)+(-the*tf.math.log(z_SC_lower)+sig2/2)*z_SC_lower*V_SC_lower_z + sig2*z_SC_lower**2/2*V_SC_lower_zz
+
+
+    L3_lower = tf.reduce_mean( tf.abs(diff_V_SC_lower ) )
+
     
     fitted_boundary_SC_upper = model(
         tf.stack([a_SC_upper[:, 0], z_SC_upper[:, 0]], axis=1))
@@ -246,12 +240,17 @@ def loss(model, a_interior, z_interior, a_interior_lower, z_interior_lower, a_NB
     opt_boundary_SC_upper_a = tf.maximum(fitted_boundary_SC_upper_a - u_deriv(
         z_SC_upper+r*a_SC_upper), tf.zeros_like(fitted_boundary_SC_upper))
     
-    L3_upper = tf.reduce_mean(tf.square(opt_boundary_SC_upper_a))
+    L3_upper = tf.reduce_mean(tf.abs(opt_boundary_SC_upper_a))
     
-    # L3_upper = tf.reduce_mean( tf.zeros_like(fitted_boundary_NBC ) )
+    
+    weight_lower = tf.square(z_interior_lower-1) + 1
+    weight_sum_lower = tf.reduce_sum(weight_lower,axis=0,keepdims=True)
+    
+    weighted_lower = weight_lower/weight_sum_lower
 
     
-    L3 = L3_lower + L3_upper + tf.reduce_mean(tf.square(diff_V_lower)) 
+    
+    L3 = L3_lower + L3_upper +tf.reduce_sum( tf.abs(diff_V_lower) * weighted_lower)
     
     return L1, L2, L3
     # return L1, L2
@@ -315,12 +314,13 @@ def Loss_V(V):
 
     Loss = -rho*V+u(c)+V_a * \
         (z_interior_tnsr+r*a_interior_tnsr-c)+(-the*tf.math.log(z_interior_tnsr)+sig2/2)*z_interior_tnsr*V_z + sig2*z_interior_tnsr**2/2*V_zz
-        
-    loss = tf.math.log(tf.abs(Loss))
     
-    return loss
+    loss = tf.abs(Loss)
+    loss_log10 = tf.math.log(tf.abs(Loss))/tf.log(tf.constant(10, dtype=tf.float32))
+    
+    return loss_log10, loss
 
-Loss_VV = Loss_V(V)
+Loss_log10, Loss = Loss_V(V)
 
 # set optimizer - NOTE THIS IS DIFFERENT FROM OTHER APPLICATIONS!
 global_step = tf.Variable(0, trainable=False)
@@ -387,20 +387,26 @@ for i in range(sampling_stages):
         fitted_Vzz = sess.run([V_zz], feed_dict={
                             a_interior_tnsr: Xgrid[:,0:1], z_interior_tnsr: Xgrid[:,1:2]})[0]
 
-        Loss = sess.run([Loss_VV], feed_dict={
-                            a_interior_tnsr: Xgrid[:,0:1], z_interior_tnsr: Xgrid[:,1:2]})[0]
+        fitted_Loss_log10, fitted_Loss = sess.run([Loss_log10, Loss], feed_dict={
+                            a_interior_tnsr: Xgrid[:,0:1], z_interior_tnsr: Xgrid[:,1:2]})
 
-
+        average = np.mean(fitted_Loss.reshape(n_plot, n_plot))
+        weight = 100*(Z-(zmean+0.05))**2+1
+        sum_weight = np.sum(weight)
+        weighted_average = np.sum(fitted_Loss.reshape(n_plot, n_plot)*( weight/ sum_weight))
+        
         fig = plt.figure(figsize=(16, 9))
         ax = fig.add_subplot(111, projection='3d')
-        ax.plot_surface(A, Z, Loss.reshape(n_plot, n_plot), cmap='viridis')
+        ax.plot_wireframe(A, Z, np.zeros_like(A), color='red' , rcount=10, ccount=10)
+        surf = ax.plot_surface(A, Z, fitted_Loss_log10.reshape(n_plot, n_plot), cmap='viridis')
+        ax.plot_wireframe(A, Z, -5*np.ones_like(A), color='purple' , rcount=10, ccount=10)
+        fig.colorbar(surf, ax=ax)
         ax.view_init(35, 35)
         ax.set_xlabel('$a$')
         ax.set_ylabel('$z$')
         ax.set_zlim(-10,5)
 
-        # ax.set_zlabel('$v(a,z)$')
-        # ax.set_title('Deep Learning Solution')
+        ax.set_title('Loss: L1Average={}, L1Weighted average={}'.format(average, weighted_average))
 
         plt.savefig( './Figure/' +savefolder+ '/' + saveName + '_LossV_{}.png'.format(i),bbox_inches='tight')
 
@@ -434,21 +440,62 @@ for i in range(sampling_stages):
         fig = plt.figure(figsize=(16, 9))
         plt.plot(Z[:, 0], fitted_Va.reshape(n_plot, n_plot)[:, 0],
                 label='NN Solution', color='black')
-        # plt.plot(Z[:,0], Moll_Va[:,0],label='$\partial_a v(a,z)$: Upwind')
         plt.plot(Z[:, 0], u_deriv(Z[:, 0]+r*A[:, 0]),
                 label='State Constraint', color='red')
-        # plt.plot(Z[:, 0], u_deriv(Z[:, 0]+r*A[:, 0]),
-        #          label=r'$u^\prime(z + r a)$', color = 'red')
-        # plt.view_init(35, 35)
+        plt.plot(Z[:, 0], Moll_Va[:,0], label='FDM Solution', color='blue', linestyle=":")
         plt.xlabel('$z$')
-        # plt.ylim(0.75, 1.10)
         plt.legend()
-        # plt.show()
-        # ax.set_zlabel('$\partial V / \partial a$')
-        # ax.set_zlabel('Difference')
-        # ax.set_title('Deep Learning Solution')
         plt.savefig('./Figure/' +savefolder+ '/' + saveName + '_VaSlice_{}.png'.format(i),bbox_inches='tight')
         plt.close('all')
+
+
+        aspace = np.linspace(-0.02, 1, n_plot)
+        zspace = np.linspace(zmean*0.8, zmean*1.2, n_plot)
+        A, Z = np.meshgrid(aspace, zspace)
+        Xgrid = np.vstack([A.flatten(), Z.flatten()]).T
+
+        # simulate process at current t 
+
+
+        fitted_Va = sess.run([V_a], feed_dict={
+                            a_interior_tnsr: Xgrid[:,0:1], z_interior_tnsr: Xgrid[:,1:2]})[0]
+
+        fitted_V = sess.run([V], feed_dict={
+                            a_interior_tnsr: Xgrid[:,0:1], z_interior_tnsr: Xgrid[:,1:2]})[0]
+
+        fitted_c = sess.run([numerical_c], feed_dict={a_interior_tnsr: Xgrid[:,0:1], z_interior_tnsr: Xgrid[:,1:2]})[0]
+
+        fitted_Vaa = sess.run([V_aa], feed_dict={
+                            a_interior_tnsr: Xgrid[:,0:1], z_interior_tnsr: Xgrid[:,1:2]})[0]
+        fitted_Vz = sess.run([V_z], feed_dict={
+                            a_interior_tnsr: Xgrid[:,0:1], z_interior_tnsr: Xgrid[:,1:2]})[0]
+        fitted_Vzz = sess.run([V_zz], feed_dict={
+                            a_interior_tnsr: Xgrid[:,0:1], z_interior_tnsr: Xgrid[:,1:2]})[0]
+        
+        fitted_Loss_log10, fitted_Loss = sess.run([Loss_log10, Loss], feed_dict={
+                            a_interior_tnsr: Xgrid[:,0:1], z_interior_tnsr: Xgrid[:,1:2]})
+
+        average = np.mean(fitted_Loss.reshape(n_plot, n_plot))
+        weight = 100*(Z-1)**2+1
+        sum_weight = np.sum(weight)
+        weighted_average = np.sum(fitted_Loss.reshape(n_plot, n_plot)*( weight/ sum_weight))
+        
+
+        fig = plt.figure(figsize=(16, 9))
+        ax = fig.add_subplot(111, projection='3d')
+        ax.plot_wireframe(A, Z, np.zeros_like(A), color='red' , rcount=10, ccount=10)
+        ax.plot_wireframe(A, Z, -5*np.ones_like(A), color='purple' , rcount=10, ccount=10)
+        surf = ax.plot_surface(A, Z, fitted_Loss_log10.reshape(n_plot, n_plot), cmap='viridis')
+        fig.colorbar(surf, ax=ax)
+        ax.view_init(35, 35)
+        ax.set_xlabel('$a$')
+        ax.set_ylabel('$z$')
+        ax.set_zlim(-10,5)
+        ax.set_title('Loss: L1Average={}, L1Weighted average={}'.format(average, weighted_average))
+
+        plt.savefig( './Figure/' +savefolder+ '/' + saveName + '_LossV_Shrink_{}.png'.format(i),bbox_inches='tight')
+        
+
 
 # save outout
 
@@ -493,19 +540,26 @@ fitted_Vz = sess.run([V_z], feed_dict={
 fitted_Vzz = sess.run([V_zz], feed_dict={
                     a_interior_tnsr: Xgrid[:,0:1], z_interior_tnsr: Xgrid[:,1:2]})[0]
 
-Loss = sess.run([Loss_VV], feed_dict={
-                    a_interior_tnsr: Xgrid[:,0:1], z_interior_tnsr: Xgrid[:,1:2]})[0]
+fitted_Loss_log10, fitted_Loss = sess.run([Loss_log10, Loss], feed_dict={
+                    a_interior_tnsr: Xgrid[:,0:1], z_interior_tnsr: Xgrid[:,1:2]})
+
+average = np.mean(fitted_Loss.reshape(n_plot, n_plot))
+weight = 100*(Z-(zmean+0.05))**2+1
+sum_weight = np.sum(weight)
+weighted_average = np.sum(fitted_Loss.reshape(n_plot, n_plot)*( weight/ sum_weight))
+        
 
 
 fig = plt.figure(figsize=(16, 9))
 ax = fig.add_subplot(111, projection='3d')
-ax.plot_surface(A, Z, Loss.reshape(n_plot, n_plot), cmap='viridis')
-# ax.view_init(35, 35)
+ax.plot_wireframe(A, Z, np.zeros_like(A), color='red' , rcount=10, ccount=10)
+surf = ax.plot_surface(A, Z, fitted_Loss_log10.reshape(n_plot, n_plot), cmap='viridis')
+fig.colorbar(surf, ax=ax)# ax.view_init(35, 35)
 ax.set_xlabel('$a$')
 ax.set_ylabel('$z$')
 ax.set_zlim(-10,5)
 # ax.set_zlabel('$v(a,z)$')
-# ax.set_title('Deep Learning Solution')
+ax.set_title('Loss: L1Average={}, L1Weighted average={}'.format(average, weighted_average))
 
 plt.savefig( './Figure/' +savefolder+ '/' + saveName + '_LossV.png',bbox_inches='tight')
 
@@ -564,6 +618,7 @@ ax.set_zlim(0.75,1.10)
 plt.savefig('./Figure/' +savefolder+ '/' + saveName + '_Va.png',bbox_inches='tight')
 
 Moll_Va = pd.read_csv("./MollData/Va_Upwind.csv", header = None)
+Moll_Va = np.array(Moll_Va)
 
 fig = plt.figure(figsize=(16, 9))
 ax = fig.add_subplot(111, projection='3d')
@@ -658,3 +713,14 @@ pd.DataFrame(fitted_Va.reshape(n_plot, n_plot)).to_csv('./Figure/' +savefolder+ 
 
 
 
+fig = plt.figure(figsize=(16, 9))
+plt.plot(Z[:, 0], fitted_Va.reshape(n_plot, n_plot)[:, 0],
+        label='NN Solution', color='black')
+plt.plot(Z[:, 0], u_deriv(Z[:, 0]+r*A[:, 0]),
+        label='State Constraint', color='red')
+plt.plot(Z[:, 0], Moll_Va[:,0],
+        label='FDM Solution', color='blue', linestyle=":")
+plt.xlabel('$z$')
+# plt.ylim(0.75, 1.10)
+plt.legend()
+plt.savefig('./Figure/' +savefolder+ '/' + saveName + '_VaSlice.png', bbox_inches='tight')

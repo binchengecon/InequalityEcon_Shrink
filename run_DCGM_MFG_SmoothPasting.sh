@@ -2,15 +2,7 @@
 
 
 
-python_name="MollProblem_Simple.py"
-# python_name="MollProblem_Simple_Eq.py"
-# python_name="MollProblem_Simple_penalty.py"
-# python_name="MollProblem_Simple_varineq.py"
-
-
-# python_name="MollProblem_Simple_punishalower_max.py"
-# python_name="MollProblem_Simple_punishall_max.py"
-# python_name="MollProblem_Simple_upper.py"
+python_name="MollProblem_SmoothPasting.py"
 
 
 # num_layers_FFNN_arr=(0 4 5 6 7 8)
@@ -43,7 +35,8 @@ nodes_per_layer_arr=(50)
 
 
 
-sampling_stages_arr=(80000)
+# sampling_stages_arr=(80000)
+sampling_stages_arr=(320000)
 # sampling_stages_arr=(2)
 # sampling_stages_arr=(30000 50000)
 steps_per_sample_arr=(10)
@@ -63,7 +56,7 @@ LearningRate_arr=(0.001)
 # LearningRate_arr=(0.001)
 
 # weightarr=(0 1 3 5 10 50 100 200 500 1000 10000)
-weightarr=(0)
+weightarr=(10)
 # weightarr=(200 500 1000 10000)
 # weightarr=(10000)
 # weightarr=(50)
@@ -74,9 +67,21 @@ LENGTH_weight=$((${#weightarr[@]} - 1))
 
 count=0
 
-num_run=5
+# num_run=5
+num_run=2
 ID_num_run=$((num_run - 1))
 
+
+# lowerpoint=1
+# # upperslope=10
+# upperpoint=1.15
+
+lowerpoint=1.05
+# upperslope=10
+upperpoint=1.10
+
+num_point=10
+ID_num_point=$((num_point - 1))
 
 for num_layers_FFNN in ${num_layers_FFNN_arr[@]}; do
     for activation_FFNN in ${activation_FFNN_arr[@]}; do
@@ -89,8 +94,9 @@ for num_layers_FFNN in ${num_layers_FFNN_arr[@]}; do
                                 for LearningRate in ${LearningRate_arr[@]}; do
                                     for id in $(seq 0 $ID_num_run); do
                                         for weight in ${weightarr[@]}; do
+                                            for id_point in $(seq 0 $ID_num_point); do
 
-                                            action_name="num_layers_FFNN_${num_layers_FFNN}_activation_FFNN_${activation_FFNN}_num_layers_RNN_${num_layers_RNN}_nodes_per_layer_${nodes_per_layer}/sampling_stages_${sampling_stages}_steps_per_sample_${steps_per_sample}/nSim_interior_${nSim_interior}_nSim_boundary_${nSim_boundary}/LearningRate_${LearningRate}_weight_${weight}"
+                                            action_name="num_layers_FFNN_${num_layers_FFNN}_activation_FFNN_${activation_FFNN}_num_layers_RNN_${num_layers_RNN}_nodes_per_layer_${nodes_per_layer}/sampling_stages_${sampling_stages}_steps_per_sample_${steps_per_sample}/nSim_interior_${nSim_interior}_nSim_boundary_${nSim_boundary}/LearningRate_${LearningRate}_weight_${weight}/[${lowerpoint},${upperpoint}]_${num_point}/id_point_${id_point}"
 
 
                                             mkdir -p ./job-outs/${python_name}/${action_name}/
@@ -126,7 +132,7 @@ echo "Program starts \$(date)"
 start_time=\$(date +%s)
 # perform a task
 
-python3 -u  /home/bincheng/InequalityEcon/$python_name --num_layers_FFNN ${num_layers_FFNN} --activation_FFNN ${activation_FFNN} --num_layers_RNN ${num_layers_RNN} --nodes_per_layer ${nodes_per_layer}  --sampling_stages ${sampling_stages} --steps_per_sample ${steps_per_sample} --nSim_interior ${nSim_interior} --nSim_boundary  ${nSim_boundary}  --LearningRate ${LearningRate} --id ${id} --weight ${weight}
+python3 -u  /home/bincheng/InequalityEcon/$python_name --num_layers_FFNN ${num_layers_FFNN} --activation_FFNN ${activation_FFNN} --num_layers_RNN ${num_layers_RNN} --nodes_per_layer ${nodes_per_layer}  --sampling_stages ${sampling_stages} --steps_per_sample ${steps_per_sample} --nSim_interior ${nSim_interior} --nSim_boundary  ${nSim_boundary}  --LearningRate ${LearningRate} --id ${id} --weight ${weight}  --lowerpoint ${lowerpoint} --upperpoint ${upperpoint}   --id_point ${id_point}  --num_point ${num_point}
 
 echo "Program ends \$(date)"
 end_time=\$(date +%s)
@@ -140,6 +146,8 @@ eval "echo Elapsed time: \$(date -ud "@\$elapsed" +'\$((%s/3600/24)) days %H hr 
 EOF
 						count=$(($count + 1))
 						sbatch ./bash/${python_name}/${action_name}/train.sh
+                                            done
+                                        done
                                     done
                                 done
                             done
@@ -149,5 +157,4 @@ EOF
             done
         done
     done
-done
 done

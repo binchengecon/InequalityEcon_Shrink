@@ -4,6 +4,8 @@
 # import tensorflow as tf
 import tensorflow.compat.v1 as tf
 tf.disable_v2_behavior()
+from functools import partial
+
 #%% LSTM-like layer used in DGM (see Figure 5.3 and set of equations on p. 45) - modification of Keras layer class
 
 class LSTMLayer(tf.keras.layers.Layer):
@@ -64,14 +66,10 @@ class LSTMLayer(tf.keras.layers.Layer):
 
 
         # bias vectors
-        self.bz = self.add_weight("bz", shape=[1, self.output_dim],
-                                    initializer=tf.keras.initializers.glorot_normal)
-        self.bg = self.add_weight("bg", shape=[1, self.output_dim],
-                                    initializer=tf.keras.initializers.glorot_normal)
-        self.br = self.add_weight("br", shape=[1, self.output_dim],
-                                    initializer=tf.keras.initializers.glorot_normal)
-        self.bh = self.add_weight("bh", shape=[1, self.output_dim],
-                                    initializer=tf.keras.initializers.glorot_normal)
+        self.bz = self.add_weight("bz", shape=[1, self.output_dim])
+        self.bg = self.add_weight("bg", shape=[1, self.output_dim])
+        self.br = self.add_weight("br", shape=[1, self.output_dim])
+        self.bh = self.add_weight("bh", shape=[1, self.output_dim])
     
     
     # main function to be called 
@@ -102,7 +100,7 @@ class LSTMLayer(tf.keras.layers.Layer):
 class DenseLayer(tf.keras.layers.Layer):
     
     # constructor/initializer function (automatically called when new instance of class is created)
-    def __init__(self, output_dim, input_dim, transformation=None):
+    def __init__(self, output_dim, input_dim, transformation=None, alpha=None):
         '''
         Args:
             input_dim:       dimensionality of input data
@@ -117,21 +115,24 @@ class DenseLayer(tf.keras.layers.Layer):
         super(DenseLayer,self).__init__()
         self.output_dim = output_dim
         self.input_dim = input_dim
-        
         ### define dense layer parameters (use Xavier initialization)
         # w vectors (weighting vectors for output of previous layer)
         self.W = self.add_weight("W", shape=[self.input_dim, self.output_dim],
                                    initializer=tf.keras.initializers.glorot_normal)
         
         # bias vectors
-        self.b = self.add_weight("b", shape=[1, self.output_dim],
-                                    initializer=tf.keras.initializers.glorot_normal)
+        self.b = self.add_weight("b", shape=[1, self.output_dim])
         
+        self.alpha = alpha
+
         if transformation:
             if transformation == "tanh":
                 self.transformation = tf.tanh
             elif transformation == "relu":
                 self.transformation = tf.nn.relu
+            elif transformation == "leaky_relu":
+                self.transformation = tf.nn.leaky_relu
+
         else:
             self.transformation = transformation
     
@@ -148,230 +149,23 @@ class DenseLayer(tf.keras.layers.Layer):
         S = tf.add(tf.matmul(X, self.W), self.b)
                 
         if self.transformation:
-            S = self.transformation(S)
+            
+            if self.alpha:
+                S = self.transformation(S, alpha = self.alpha)
+            else:
+                S = self.transformation(S)
+
         
         return S
 
 #%% Neural network architecture used in DGM - modification of Keras Model class
     
-class DGMNet(tf.keras.Model):
     
-    # constructor/initializer function (automatically called when new instance of class is created)
-    def __init__(self, layer_width, n_layers, input_dim, final_trans=None):
-        '''
-        Args:
-            layer_width: 
-            n_layers:    number of intermediate LSTM layers
-            input_dim:   spaital dimension of input data (EXCLUDES time dimension)
-            final_trans: transformation used in final layer
-        
-        Returns: customized Keras model object representing DGM neural network
-        '''  
-        
-        # create an instance of a Model object (call initialize function of superclass of DGMNet)
-        super(DGMNet,self).__init__()
-        
-        # define initial layer as fully connected 
-        # NOTE: to account for time inputs we use input_dim+1 as the input dimensionality
-        self.initial_layer = DenseLayer(layer_width, input_dim, transformation = "tanh")
-        
-        # define intermediate LSTM layers
-        self.n_layers = n_layers
-        self.LSTMLayerList = []
-                
-        for _ in range(self.n_layers):
-            self.LSTMLayerList.append(LSTMLayer(layer_width, input_dim))
-        
-        # define final layer as fully connected with a single output (function value)
-        self.final_layer = DenseLayer(1, layer_width, transformation = final_trans)
-    
-    
-    # main function to be called  
-    def call(self,x):
-        '''            
-        Args:
-            x: sampled space inputs
-
-        Run the DGM model and obtain fitted function value at the inputs (x)                
-        '''  
-        
-        # define input vector as time-space pairs
-        X = x
-        
-        # call initial layer
-        S = self.initial_layer.call(X)
-        
-        # call intermediate LSTM layers
-        for i in range(self.n_layers):
-            S = self.LSTMLayerList[i].call(S,X)
-        
-        # call final LSTM layers
-        result = self.final_layer.call(S)
-        
-        return result
-    
-    
-class DCGMNet(tf.keras.Model):
-
-    # constructor/initializer function (automatically called when new instance of class is created)
-    def __init__(self, X_low, X_high, layer_width, n_layers_FFNN, n_layers_RNN, input_dim, final_trans=None):
-        '''
-        Args:
-            layer_width: 
-            n_layers:    number of intermediate LSTM layers
-            input_dim:   spaital dimension of input data (EXCLUDES time dimension)
-            final_trans: transformation used in final layer
-        
-        Returns: customized Keras model object representing DGM neural network
-        '''
-
-        # create an instance of a Model object (call initialize function of superclass of DGMNet)
-        super(DCGMNet, self).__init__()
-
-        # define initial layer as fully connected
-        # NOTE: to account for time inputs we use input_dim+1 as the input dimensionality
-        self.n_layers_FFNN = n_layers_FFNN
-        self.n_layers_RNN = n_layers_RNN
-
-
-        # define scaling layer: for standarization
-
-        self.initial_layer_scale = tf.keras.layers.Lambda(lambda x: 2.0*(x - X_low)/(X_high - X_low) - 1.0)
-        # define intermediate Dense layers
-
-        self.DenseLayerList = []
-        for _ in range(self.n_layers_FFNN):
-            if _ == 0:
-                self.DenseLayerList.append(DenseLayer(
-                    layer_width, input_dim, transformation="tanh"))
-            else :
-                self.DenseLayerList.append(DenseLayer(
-                    layer_width, layer_width, transformation="tanh"))
-            
-        # define intermediate LSTM layers
-        self.LSTMLayerList = []
-
-        for _ in range(self.n_layers_RNN):
-            self.LSTMLayerList.append(LSTMLayer(layer_width, input_dim))
-
-        # define final layer as fully connected with a single output (function value)
-        self.final_layer = DenseLayer(
-            1, layer_width, transformation=final_trans)
-
-    # main function to be called
-
-    def call(self, x):
-        '''            
-        Args:
-            x: sampled space inputs
-
-        Run the DGM model and obtain fitted function value at the inputs (x)                
-        '''
-
-        # define input vector as time-space pairs
-        X = x
-
-        # call initial layer scaling
-        S = self.initial_layer_scale(X)
-        
-        for i in range(self.n_layers_FFNN):
-            S = self.DenseLayerList[i].call(S)
-            
-        # call intermediate LSTM layers
-        for i in range(self.n_layers_RNN):
-            S = self.LSTMLayerList[i].call(S, X)
-
-        # call final layers
-        result = self.final_layer.call(S)
-
-        return result
-
-
-
-class DCGM2Net(tf.keras.Model):
-
-    # constructor/initializer function (automatically called when new instance of class is created)
-    def __init__(self, X_low, X_high, layer_width, n_layers_FFNN, n_layers_RNN, input_dim, activation_FFNN, final_trans=None):
-        '''
-        Args:
-            layer_width: 
-            n_layers:    number of intermediate LSTM layers
-            input_dim:   spaital dimension of input data (EXCLUDES time dimension)
-            final_trans: transformation used in final layer
-        
-        Returns: customized Keras model object representing DGM neural network
-        '''
-
-        # create an instance of a Model object (call initialize function of superclass of DGMNet)
-        super(DCGM2Net, self).__init__()
-
-        # define initial layer as fully connected
-        # NOTE: to account for time inputs we use input_dim+1 as the input dimensionality
-        self.n_layers_FFNN = n_layers_FFNN
-        self.n_layers_RNN = n_layers_RNN
-
-
-        # define scaling layer: for standarization
-
-        self.initial_layer_scale = tf.keras.layers.Lambda(lambda x: 2.0*(x - X_low)/(X_high - X_low) - 1.0)
-        self.initial_layer = DenseLayer(layer_width, input_dim, transformation = "tanh")
-
-        # define intermediate LSTM layers
-        self.LSTMLayerList = []
-
-        for _ in range(self.n_layers_RNN):
-            self.LSTMLayerList.append(LSTMLayer(layer_width, input_dim))
-
-
-        # define intermediate Dense layers
-
-        self.DenseLayerList = []
-        for _ in range(self.n_layers_FFNN):
-            self.DenseLayerList.append(DenseLayer(
-                layer_width, layer_width, transformation=activation_FFNN))
-            
-
-        # define final layer as fully connected with a single output (function value)
-        self.final_layer = DenseLayer(
-            1, layer_width, transformation=final_trans)
-
-    # main function to be called
-
-    def call(self, x):
-        '''            
-        Args:
-            x: sampled space inputs
-
-        Run the DGM model and obtain fitted function value at the inputs (x)                
-        '''
-
-        # define input vector 
-        X = x
-
-        # call initial layer scaling
-        X = self.initial_layer_scale(X)
-        S = self.initial_layer.call(X)
-        
-        # call intermediate LSTM layers
-        for i in range(self.n_layers_RNN):
-            S = self.LSTMLayerList[i].call(S, X) 
-            
-        Inter_S = S
-            
-        for i in range(self.n_layers_FFNN):
-            S = self.DenseLayerList[i].call(S)
-            
-        # call final layers
-        result = self.final_layer.call(S+Inter_S)
-
-        return result
-
-
 
 class DCGM3Net(tf.keras.Model):
 
     # constructor/initializer function (automatically called when new instance of class is created)
-    def __init__(self, X_low, X_high, layer_width, n_layers_FFNN, n_layers_RNN, input_dim, output_dim, activation_FFNN, final_trans=None):
+    def __init__(self, X_low, X_high, layer_width, n_layers_FFNN, n_layers_RNN, input_dim, activation_FFNN, FFNN_alpha, final_trans=None):
         '''
         Args:
             layer_width: 
@@ -389,7 +183,7 @@ class DCGM3Net(tf.keras.Model):
         # NOTE: to account for time inputs we use input_dim+1 as the input dimensionality
         self.n_layers_FFNN = n_layers_FFNN
         self.n_layers_RNN = n_layers_RNN
-        self.output_dim = output_dim
+
 
         # define scaling layer: for standarization
 
@@ -408,16 +202,16 @@ class DCGM3Net(tf.keras.Model):
         self.DenseLayerList = []
         for _ in range(self.n_layers_FFNN):
             self.DenseLayerList.append(DenseLayer(
-                layer_width, layer_width, transformation=activation_FFNN))
+                layer_width, layer_width, transformation=activation_FFNN, alpha = FFNN_alpha))
             
 
         # define final layer as fully connected with a single output (function value)
         self.final_layer = DenseLayer(
-            output_dim, layer_width, transformation=final_trans)
+            1, layer_width, transformation=final_trans)
 
     # main function to be called
 
-    def call(self, x):
+    def __call__(self, x):
         '''            
         Args:
             x: sampled space inputs
@@ -435,13 +229,13 @@ class DCGM3Net(tf.keras.Model):
         # call intermediate LSTM layers
         for i in range(self.n_layers_RNN):
             S = self.LSTMLayerList[i].call(S, X) 
-            
-        Inter_S = S
-            
+                        
         for i in range(self.n_layers_FFNN):
-            S = self.DenseLayerList[i].call(S)
+            S = self.DenseLayerList[i].call(S) + S
             
         # call final layers
-        result = self.final_layer.call(S+Inter_S)
+        result = self.final_layer.call(S)
 
         return result
+
+

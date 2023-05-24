@@ -6,18 +6,18 @@ python_name="SannikovProblem_findX_Concave_ODEloss4.py" # 3 dmg
 # python_name="SannikovProblem_findX_Concave_ODEloss4_ODEloss.py" # 3 dmg
 
 
-num_layers_FFNN_arr=(0 2 3 4)
+num_layers_FFNN_arr=(2 3 4)
 activation_FFNN_arr=("tanh")
-num_layers_RNN_arr=(0 3)
-nodes_per_layer_arr=(30 40 50 60)
+num_layers_RNN_arr=(0)
+nodes_per_layer_arr=(40 50 60)
 
-sampling_stages_arr=(50000)
+sampling_stages_arr=(100000)
 steps_per_sample_arr=(10)
 
 nSim_interior_arr=(1024)
 nSim_boundary_arr=(1)
 
-LearningRate_arr=(0.01 0.001 0.0001)
+LearningRate_arr=(0.001)
 
 
 # num_layers_FFNN_arr=(0)

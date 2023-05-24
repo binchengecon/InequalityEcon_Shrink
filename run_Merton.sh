@@ -2,7 +2,7 @@
 
 
 
-python_name="SannikovProblem_findX_Concave_ODEloss4_robust_plot.py" # 3 dmg
+python_name="MertonProblem_DCGM.py" # 3 dmg
 # python_name="SannikovProblem_findX_Concave_ODEloss4_ODEloss.py" # 3 dmg
 
 
@@ -12,13 +12,11 @@ num_layers_RNN_arr=(0)
 nodes_per_layer_arr=(40 50 60)
 
 sampling_stages_arr=(100000)
-# sampling_stages_arr=(10)
 steps_per_sample_arr=(10)
 
 nSim_interior_arr=(1024)
 nSim_boundary_arr=(1)
 
-# LearningRate_arr=(0.01 0.001 0.0001)
 LearningRate_arr=(0.001)
 
 
@@ -34,21 +32,6 @@ LearningRate_arr=(0.001)
 # nSim_boundary_arr=(1)
 
 # LearningRate_arr=(0.01)
-
-
-# slopearr=(2.45812833 2.41668545 2.10360393 1.85228996 1.519999 1.0556965 0.95382563 0.75974465 0.33722682)
-# xiarr=(10000 100 10 5 2.5 1 0.8 0.5 0.1)
-
-
-# slopearr=(2.45812833 2.10360393 1.85228996 1.0556965 0.75974465)
-# xiarr=(10000 10 5 1 0.5)
-
-slopearr=(2.45812833 1.85228996 1.0556965 0.75974465)
-xiarr=(10000 5 1 0.5)
-
-
-
-LENGTH_slope=$((${#slopearr[@]} - 1))
 
 
 
@@ -80,8 +63,8 @@ for num_layers_FFNN in ${num_layers_FFNN_arr[@]}; do
 
 ######## login
 #SBATCH --job-name=id_${id}
-#SBATCH --output=./job-outs/${python_name}/${action_name}/train_plot.out
-#SBATCH --error=./job-outs/${python_name}/${action_name}/train_plot.err
+#SBATCH --output=./job-outs/${python_name}/${action_name}/train.out
+#SBATCH --error=./job-outs/${python_name}/${action_name}/train.err
 
 #SBATCH --account=pi-lhansen
 #SBATCH --partition=caslake
@@ -98,7 +81,7 @@ echo "Program starts \$(date)"
 start_time=\$(date +%s)
 # perform a task
 
-python3 -u  /home/bincheng/InequalityEcon/$python_name --slope ${slopearr[@]}  --uncertainty ${xiarr[@]} --num_layers_FFNN ${num_layers_FFNN} --activation_FFNN ${activation_FFNN} --num_layers_RNN ${num_layers_RNN} --nodes_per_layer ${nodes_per_layer}  --sampling_stages ${sampling_stages} --steps_per_sample ${steps_per_sample} --nSim_interior ${nSim_interior} --nSim_boundary  ${nSim_boundary}  --LearningRate ${LearningRate}
+python3 -u  /home/bincheng/InequalityEcon/$python_name --num_layers_FFNN ${num_layers_FFNN} --activation_FFNN ${activation_FFNN} --num_layers_RNN ${num_layers_RNN} --nodes_per_layer ${nodes_per_layer}  --sampling_stages ${sampling_stages} --steps_per_sample ${steps_per_sample} --nSim_interior ${nSim_interior} --nSim_boundary  ${nSim_boundary}  --LearningRate ${LearningRate}
 
 echo "Program ends \$(date)"
 end_time=\$(date +%s)
@@ -110,9 +93,8 @@ eval "echo Elapsed time: \$(date -ud "@\$elapsed" +'\$((%s/3600/24)) days %H hr 
 # echo ${hXarr[@]}
 
 EOF
-                                        count=$(($count + 1))
-                                        sbatch ./bash/${python_name}/${action_name}/train.sh
-                                    done
+        count=$(($count + 1))
+        sbatch ./bash/${python_name}/${action_name}/train.sh
                                 done
                             done
                         done
@@ -121,3 +103,4 @@ EOF
             done
         done
     done
+done

@@ -11,6 +11,7 @@ import argparse
 import os
 import csv
 import pandas as pd
+from matplotlib import cm
 
 plt.rcParams["savefig.bbox"] = "tight"
 
@@ -72,7 +73,7 @@ n_plot = 600  # Points on plot grid for each dimension
 
 # Save options
 saveOutput = False
-savefolder = 'Moll_controlva_test1_weight/num_layers_FFNN_{}_activation_FFNN_{}_num_layers_RNN_{}_nodes_per_layer_{}/sampling_stages_{}_steps_per_sample_{}_starting_learning_rate_{}_weight_{}/nSim_interior_{}_nSim_boundary_{}/id_{}/'.format(num_layers_FFNN, activation_FFNN, num_layers_RNN, nodes_per_layer, sampling_stages, steps_per_sample, starting_learning_rate, weight, nSim_interior, nSim_boundary, idd)
+savefolder = 'Moll_control_weight_samplelower/num_layers_FFNN_{}_activation_FFNN_{}_num_layers_RNN_{}_nodes_per_layer_{}/sampling_stages_{}_steps_per_sample_{}_starting_learning_rate_{}_weight_{}/nSim_interior_{}_nSim_boundary_{}/id_{}/'.format(num_layers_FFNN, activation_FFNN, num_layers_RNN, nodes_per_layer, sampling_stages, steps_per_sample, starting_learning_rate, weight, nSim_interior, nSim_boundary, idd)
 saveName   = 'MollProblem' 
 saveFigure = True
 figureName = 'MollProblem' 
@@ -83,7 +84,9 @@ os.makedirs('./Figure/'+savefolder+'/',exist_ok=True)
 os.makedirs('./SavedNets/' +savefolder+ '/', exist_ok=True)
 # market price of risk
 
-
+Moll_Va = pd.read_csv("./MollData/Va_Upwind.csv", header = None)
+print(Moll_Va.shape)
+Moll_Va = np.array(Moll_Va)
 def u(c):
     return c**(1-gamma)/(1-gamma)
 
@@ -113,36 +116,24 @@ def sampler(nSim_interior, nSim_boundary):
     
     # Sampler #1: domain interior    
 
-    a_interior = np.random.uniform(low=0, high=1, size=[nSim_interior, 1])**2 * (X_high[0]-(X_low[0] )) + X_low[0] 
+    a_interior = np.random.uniform(low=0, high=1, size=[nSim_interior, 1])**2 * (X_high[0]-X_low[0]) + X_low[0] 
     z_interior = np.random.uniform(low=0, high=1, size=[nSim_interior, 1])**2 * (X_high[1]-X_low[1]) + X_low[1]
 
 
-    a_interior_lower = X_low[0] * np.ones((nSim_boundary, 1))
-    z_interior_lower = np.random.uniform(low=0, high=1, size=[nSim_boundary, 1])**2 * (X_high[1]-X_low[1]) + X_low[1]
+    a_lower = X_low[0] * np.ones((nSim_boundary, 1))
+    z_lower = np.random.uniform(low=0, high=1, size=[nSim_boundary, 1])**2 * (X_high[1]-X_low[1]) + X_low[1]
+
+    a_interior_lower = np.random.uniform(low=0, high=1, size=[nSim_boundary, 1]) * (1-X_low[0]) + X_low[0] 
+    z_interior_lower = np.random.uniform(low=0, high=1, size=[nSim_boundary, 1]) * (X_high[1]-X_low[1]) + X_low[1]
 
 
-    # Sampler #2: spatial boundary
-
-    a_NBC = np.random.uniform(
-        low=X_low[0], high=X_high[0], size=[nSim_boundary, 1])
-    z_NBC = X_low[1] + (X_high[1] - X_low[1]) * np.random.binomial(1, 0.5, size = (nSim_boundary,1))
-
-
-    a_SC_upper = X_high[0] * np.ones((nSim_boundary,1))
-    z_SC_upper = np.random.uniform(
-        low=X_low[1], high=X_high[1], size=[nSim_boundary, 1])
-
-    a_SC_lower = X_low[0] * np.ones((nSim_boundary, 1))
-    z_SC_lower = np.random.uniform(
-        low=0, high=1, size=[nSim_boundary, 1])**2 * (X_high[1]-X_low[1]) + X_low[1]
-
-
-    return a_interior, z_interior, a_interior_lower, z_interior_lower, a_NBC, z_NBC, a_SC_upper, z_SC_upper, a_SC_lower, z_SC_lower
+    return a_interior, z_interior, a_lower, z_lower, a_interior_lower, z_interior_lower
+    # return X_interior.astype(np.float32), X_boundary_NBC.astype(np.float32), X_boundary_SC.astype(np.float32)
 
 # Loss function for Merton Problem PDE
 
 
-def loss(model, a_interior, z_interior, a_interior_lower, z_interior_lower, a_NBC, z_NBC, a_SC_upper, z_SC_upper, a_SC_lower, z_SC_lower):
+def loss(model, a_interior, z_interior, a_lower, z_lower, a_interior_lower, z_interior_lower):
     ''' Compute total loss for training.
     
     Args:
@@ -158,100 +149,74 @@ def loss(model, a_interior, z_interior, a_interior_lower, z_interior_lower, a_NB
     # print(X_interior.shape, X_interior[:, 0:1].shape, X_interior[:, 1:2].shape)
     
     V = model(tf.stack([a_interior[:,0], z_interior[:,0]], axis=1))
-    # V = model(a_interior, z_interior)
-    V_a = tf.gradients(V, a_interior)[0]
-    V_aa = tf.gradients(V_a, a_interior)[0]
-    V_z = tf.gradients(V, z_interior)[0]
-    V_zz = tf.gradients(V_z, z_interior)[0]
-     
-     
-    V_a = tf.maximum(1e-10 * tf.ones_like(V), V_a)
-    
-    c = u_deriv_inv(V_a)
 
+    G = (z_interior[:,0]-X_low[1])**2 * (z_interior[:,0]-X_high[1])**2 * V
+    
+    G_a = tf.gradients(G, a_interior)[0]
+    G_aa = tf.gradients(G_a, a_interior)[0]
+    G_z = tf.gradients(G, z_interior)[0]
+    G_zz = tf.gradients(G_z, z_interior)[0]
+    
+    G_a = tf.maximum(1e-10 * tf.ones_like(G), G_a)
+    
+    c = u_deriv_inv(G_a)
     u_c = u(c) 
     
     
-    diff_V = -rho*V+u_c+V_a * \
-        (z_interior+r*a_interior-c)+(-the*tf.math.log(z_interior)+sig2/2)*z_interior*V_z + sig2*z_interior**2/2*V_zz
+    diff_G = -rho*G+u_c+G_a * \
+        (z_interior+r*a_interior-c)+(-the*tf.math.log(z_interior)+sig2/2)*z_interior*G_z + sig2*z_interior**2/2*G_zz
 
-    concave_V = tf.maximum(V_aa, tf.zeros_like(V))
-    # compute average L2-norm of differential operator
-    L1 = tf.reduce_mean(tf.square(diff_V))  + tf.reduce_mean(tf.square(concave_V))
+    concave_G = tf.maximum(G_aa, tf.zeros_like(G))
+
+    L1 = tf.reduce_mean(tf.square(diff_G))  + tf.reduce_mean(tf.square(concave_G))
+
     
-    V_lower = model(tf.stack([a_interior_lower[:,0], z_interior_lower[:,0]], axis=1))
-    # V = model(a_interior, z_interior)
-    V_a_lower = tf.gradients(V_lower, a_interior_lower)[0]
-    V_aa_lower = tf.gradients(V_a_lower, a_interior_lower)[0]
-    V_z_lower = tf.gradients(V_lower, z_interior_lower)[0]
-    V_zz_lower = tf.gradients(V_z_lower, z_interior_lower)[0]
+    
+    V_lower = model(tf.stack([a_lower[:,0], z_lower[:,0]], axis=1))
+    G_lower = (z_lower-X_low[1])**2 * (z_lower-X_high[1])**2 * V_lower
+
+    G_a_lower = tf.gradients(G_lower, a_lower)[0]
+    G_aa_lower = tf.gradients(G_a_lower, a_lower)[0]
+    G_z_lower = tf.gradients(G_lower, z_lower)[0]
+    G_zz_lower = tf.gradients(G_z_lower, z_lower)[0]
      
-    V_a_lower = tf.maximum(1e-10 * tf.ones_like(V_lower), V_a_lower)
+    G_a_lower = tf.maximum(1e-10 * tf.ones_like(G_lower), G_a_lower)
 
-    index1 = tf.cast(V_a_lower < u_deriv_inv(z_interior_lower+ r* a_interior_lower), tf.float32) 
-    index2 = tf.cast(V_a_lower >= u_deriv_inv(z_interior_lower+ r* a_interior_lower), tf.float32)
+    c_lower = tf.minimum(u_deriv_inv(G_a_lower), z_lower + r*a_lower)
+    # c_lower = tf.maximum(c_lower, (X_low[1]+r*X_low[0])*tf.ones_like(G_lower))
     
-    V_a_lower_new = u_deriv_inv(z_interior_lower+ r* a_interior_lower) * index1 + V_a_lower * index2
-    
-    c_lower = u_deriv_inv(V_a_lower_new)
-
     u_c_lower = u(c_lower) 
     
     
-    diff_V_lower = -rho*V_lower+u_c_lower+V_a_lower * \
-        (z_interior_lower+r*a_interior_lower-c_lower)+(-the*tf.math.log(z_interior_lower)+sig2/2)*z_interior_lower*V_z_lower + sig2*z_interior_lower**2/2*V_zz_lower
+    diff_G_lower = -rho*G_lower+u_c_lower+G_a_lower * \
+        (z_lower+r*a_lower-c_lower)+(-the*tf.math.log(z_lower)+sig2/2)*z_lower*G_z_lower + sig2*z_lower**2/2*G_zz_lower
 
-    # diff_V_lower = -rho*V_lower+u_c_lower+V_a_lower_new * \
-    #     (z_interior_lower+r*a_interior_lower-c_lower)+(-the*tf.math.log(z_interior_lower)+sig2/2)*z_interior_lower*V_z_lower + sig2*z_interior_lower**2/2*V_zz_lower
 
-    # L1 += tf.reduce_mean(tf.square(diff_V_lower)) 
+    L2 = tf.reduce_mean(tf.square(diff_G_lower)) 
     
     
-    # Loss term #2: boundary condition
-        # no boundary condition for this problem
-    fitted_boundary_NBC = model(tf.stack([a_NBC[:,0], z_NBC[:,0]], axis=1))
-    # fitted_boundary_NBC = model(a_NBC, z_NBC)
-    # fitted_boundary_NBC_a = tf.gradients(
-    #     fitted_boundary_NBC, X_boundary_NBC[:,0:1])[0]
 
-    fitted_boundary_NBC_z = tf.gradients(
-        fitted_boundary_NBC, z_NBC)[0]
+    V_intlow = model(tf.stack([a_interior_lower[:,0], z_interior_lower[:,0]], axis=1))
 
-    L2 = tf.reduce_mean( tf.square(fitted_boundary_NBC_z ) )
+    G_intlow = (z_interior_lower[:,0]-X_low[1])**2 * (z_interior_lower[:,0]-X_high[1])**2 * V_intlow
     
-
-    # Loss term #3: initial/terminal condition
-
-    # fitted_boundary_SC_lower = model(
-    #     tf.stack([a_SC_lower[:,0], z_SC_lower[:,0]], axis=1))
-
-    # # fitted_boundary_SC_lower = model(a_SC_lower[:,0], z_SC_lower[:,0])
-    # fitted_boundary_SC_lower_a = tf.gradients(
-    #     fitted_boundary_SC_lower, a_SC_lower)[0]
-    # opt_boundary_SC_lower_a = tf.minimum(fitted_boundary_SC_lower_a - u_deriv(
-    #     z_SC_lower+r*a_SC_lower), tf.zeros_like(fitted_boundary_SC_lower))
+    G_a_intlow = tf.gradients(G_intlow, a_interior_lower)[0]
+    G_aa_intlow = tf.gradients(G_a_intlow, a_interior_lower)[0]
+    G_z_intlow = tf.gradients(G_intlow, z_interior_lower)[0]
+    G_zz_intlow = tf.gradients(G_z_intlow, z_interior_lower)[0]
     
-    # L3_lower = tf.reduce_mean(tf.square(opt_boundary_SC_lower_a))
-
-    L3_lower = tf.reduce_mean( tf.zeros_like(fitted_boundary_NBC ) )
-    # L3_lower = tf.reduce_mean(tf.square(fitted_boundary_SC_lower_a - u_deriv(
-    # z_SC_lower+r*a_SC_lower)))
+    G_a_intlow = tf.maximum(1e-10 * tf.ones_like(G_intlow), G_a_intlow)
+    
+    c_intlow = u_deriv_inv(G_a_intlow)
+    u_c_intlow = u(c_intlow) 
     
     
-    fitted_boundary_SC_upper = model(
-        tf.stack([a_SC_upper[:, 0], z_SC_upper[:, 0]], axis=1))
+    diff_G_intlow = -rho*G_intlow+u_c_intlow+G_a_intlow * \
+        (z_interior_lower+r*a_interior_lower-c_intlow)+(-the*tf.math.log(z_interior_lower)+sig2/2)*z_interior_lower*G_z_intlow + sig2*z_interior_lower**2/2*G_zz_intlow
 
-    fitted_boundary_SC_upper_a = tf.gradients(
-        fitted_boundary_SC_upper, a_SC_upper)[0]
-    opt_boundary_SC_upper_a = tf.maximum(fitted_boundary_SC_upper_a - u_deriv(
-        z_SC_upper+r*a_SC_upper), tf.zeros_like(fitted_boundary_SC_upper))
-    
-    L3_upper = tf.reduce_mean(tf.square(opt_boundary_SC_upper_a))
-    
-    # L3_upper = tf.reduce_mean( tf.zeros_like(fitted_boundary_NBC ) )
+    L3 = tf.reduce_mean(tf.square(diff_G_intlow)) 
 
-    
-    L3 = L3_lower + L3_upper + tf.reduce_mean(tf.square(diff_V_lower)) 
+
     
     return L1, L2, L3
     # return L1, L2
@@ -267,60 +232,52 @@ model = DGM2.DCGM2Net(X_low, X_high, nodes_per_layer, num_layers_FFNN,num_layers
 # t_interior_tnsr = tf.placeholder(tf.float32, [None,1])
 a_interior_tnsr = tf.placeholder(tf.float32, [None,1])
 z_interior_tnsr = tf.placeholder(tf.float32, [None,1])
+a_lower_tnsr = tf.placeholder(tf.float32, [None,1])
+z_lower_tnsr = tf.placeholder(tf.float32, [None,1])
 a_interior_lower_tnsr = tf.placeholder(tf.float32, [None,1])
 z_interior_lower_tnsr = tf.placeholder(tf.float32, [None,1])
-a_NBC_tnsr = tf.placeholder(tf.float32, [None,1])
-z_NBC_tnsr = tf.placeholder(tf.float32, [None,1])
-a_SC_upper_tnsr = tf.placeholder(tf.float32, [None,1])
-z_SC_upper_tnsr = tf.placeholder(tf.float32, [None,1])
-a_SC_lower_tnsr = tf.placeholder(tf.float32, [None, 1])
-z_SC_lower_tnsr = tf.placeholder(tf.float32, [None, 1])
-
 
 # loss 
 L1_tnsr, L2_tnsr, L3_tnsr = loss(
-    model, a_interior_tnsr, z_interior_tnsr, a_interior_lower_tnsr, z_interior_lower_tnsr, a_NBC_tnsr, z_NBC_tnsr,a_SC_upper_tnsr,z_SC_upper_tnsr,a_SC_lower_tnsr,z_SC_lower_tnsr)
+    model, a_interior_tnsr, z_interior_tnsr, a_lower_tnsr, z_lower_tnsr, a_interior_lower_tnsr, z_interior_lower_tnsr)
 loss_tnsr = L1_tnsr + L2_tnsr + weight * L3_tnsr
 
 # value function
 
 V = model(tf.stack([a_interior_tnsr[:, 0], z_interior_tnsr[:, 0]], axis=1))
 
-V_a = tf.gradients(V, a_interior_tnsr)[0]
-V_aa = tf.gradients(V_a, a_interior_tnsr)[0]
-V_z = tf.gradients(V, z_interior_tnsr)[0]
-V_zz = tf.gradients(V_a, z_interior_tnsr)[0]
+G = (z_interior_tnsr-X_low[1])**2 * (z_interior_tnsr-X_high[1])**2 * V
+
+G_a = tf.gradients(G, a_interior_tnsr)[0]
+G_aa = tf.gradients(G_a, a_interior_tnsr)[0]
+G_z = tf.gradients(G, z_interior_tnsr)[0]
+G_zz = tf.gradients(G_z, z_interior_tnsr)[0]
 
 # optimal control computed numerically from fitted value function 
-def control_c(V):
+def control_c(G,G_a,G_z,G_aa,G_zz):
     
-    V_a = tf.gradients(V, a_interior_tnsr)[0]
         
-    c = u_deriv_inv(V_a)
+    c = u_deriv_inv(G_a)
     
     return c
 
 
 
-numerical_c = control_c(V)
 
-def Loss_V(V):
+def Loss_G(G,G_a,G_z,G_aa,G_zz):
     
-    V_a = tf.gradients(V, a_interior_tnsr)[0]
-    V_aa = tf.gradients(V_a, a_interior_tnsr)[0]
-    V_z = tf.gradients(V, z_interior_tnsr)[0]
-    V_zz = tf.gradients(V_a, z_interior_tnsr)[0]
-    
-    c = u_deriv_inv(V_a)
+    c = u_deriv_inv(G_a)
 
-    Loss = -rho*V+u(c)+V_a * \
-        (z_interior_tnsr+r*a_interior_tnsr-c)+(-the*tf.math.log(z_interior_tnsr)+sig2/2)*z_interior_tnsr*V_z + sig2*z_interior_tnsr**2/2*V_zz
+    Loss = -rho*G+u(c)+G_a * \
+        (z_interior_tnsr+r*a_interior_tnsr-c)+(-the*tf.math.log(z_interior_tnsr)+sig2/2)*z_interior_tnsr*G_z + sig2*z_interior_tnsr**2/2*G_zz
         
     loss = tf.math.log(tf.abs(Loss))
     
     return loss
 
-Loss_VV = Loss_V(V)
+
+numerical_c = control_c(G,G_a,G_z,G_aa,G_zz)
+Loss_GG = Loss_G(G,G_a,G_z,G_aa,G_zz)
 
 # set optimizer - NOTE THIS IS DIFFERENT FROM OTHER APPLICATIONS!
 global_step = tf.Variable(0, trainable=False)
@@ -343,12 +300,12 @@ for i in range(sampling_stages):
     
     # sample uniformly from the required regions
 
-    a_interior, z_interior, a_interior_lower, z_interior_lower, a_NBC, z_NBC, a_SC_upper, z_SC_upper, a_SC_lower, z_SC_lower = sampler(nSim_interior, nSim_boundary)
+    a_interior, z_interior, a_lower, z_lower, a_interior_lower, z_interior_lower  = sampler(nSim_interior, nSim_boundary)
     
     # for a given sample, take the required number of SGD steps
     for _ in range(steps_per_sample):
         loss,L1,L2,L3,_ = sess.run([loss_tnsr, L1_tnsr, L2_tnsr, L3_tnsr, optimizer],
-                                   feed_dict={a_interior_tnsr: a_interior, z_interior_tnsr: z_interior, a_interior_lower_tnsr: a_interior_lower, z_interior_lower_tnsr: z_interior_lower, a_NBC_tnsr: a_NBC, z_NBC_tnsr: z_NBC, a_SC_upper_tnsr: a_SC_upper, z_SC_upper_tnsr: z_SC_upper, a_SC_lower_tnsr: a_SC_lower, z_SC_lower_tnsr: z_SC_lower})
+                                   feed_dict={a_interior_tnsr: a_interior, z_interior_tnsr: z_interior, a_lower_tnsr: a_lower, z_lower_tnsr: z_lower, a_interior_lower_tnsr: a_interior_lower, z_interior_lower_tnsr: z_interior_lower})
         loss_list.append(loss)
     
         # print(loss, L1, L2, L3, L1_KFE,L2_KFE,L3_KFE, i)
@@ -372,28 +329,30 @@ for i in range(sampling_stages):
         # simulate process at current t 
 
 
-        fitted_Va = sess.run([V_a], feed_dict={
+        fitted_Va = sess.run([G_a], feed_dict={
                             a_interior_tnsr: Xgrid[:,0:1], z_interior_tnsr: Xgrid[:,1:2]})[0]
 
-        fitted_V = sess.run([V], feed_dict={
+        fitted_V = sess.run([G], feed_dict={
                             a_interior_tnsr: Xgrid[:,0:1], z_interior_tnsr: Xgrid[:,1:2]})[0]
 
         fitted_c = sess.run([numerical_c], feed_dict={a_interior_tnsr: Xgrid[:,0:1], z_interior_tnsr: Xgrid[:,1:2]})[0]
 
-        fitted_Vaa = sess.run([V_aa], feed_dict={
+        fitted_Vaa = sess.run([G_aa], feed_dict={
                             a_interior_tnsr: Xgrid[:,0:1], z_interior_tnsr: Xgrid[:,1:2]})[0]
-        fitted_Vz = sess.run([V_z], feed_dict={
+        fitted_Vz = sess.run([G_z], feed_dict={
                             a_interior_tnsr: Xgrid[:,0:1], z_interior_tnsr: Xgrid[:,1:2]})[0]
-        fitted_Vzz = sess.run([V_zz], feed_dict={
+        fitted_Vzz = sess.run([G_zz], feed_dict={
                             a_interior_tnsr: Xgrid[:,0:1], z_interior_tnsr: Xgrid[:,1:2]})[0]
 
-        Loss = sess.run([Loss_VV], feed_dict={
+        Loss = sess.run([Loss_GG], feed_dict={
                             a_interior_tnsr: Xgrid[:,0:1], z_interior_tnsr: Xgrid[:,1:2]})[0]
 
 
         fig = plt.figure(figsize=(16, 9))
         ax = fig.add_subplot(111, projection='3d')
-        ax.plot_surface(A, Z, Loss.reshape(n_plot, n_plot), cmap='viridis')
+        ax.plot_wireframe(A, Z, np.zeros_like(A), color='red' , rcount=10, ccount=10)
+        surf = ax.plot_surface(A, Z, Loss.reshape(n_plot, n_plot), cmap='viridis')
+        fig.colorbar(surf, ax=ax)
         ax.view_init(35, 35)
         ax.set_xlabel('$a$')
         ax.set_ylabel('$z$')
@@ -434,19 +393,11 @@ for i in range(sampling_stages):
         fig = plt.figure(figsize=(16, 9))
         plt.plot(Z[:, 0], fitted_Va.reshape(n_plot, n_plot)[:, 0],
                 label='NN Solution', color='black')
-        # plt.plot(Z[:,0], Moll_Va[:,0],label='$\partial_a v(a,z)$: Upwind')
         plt.plot(Z[:, 0], u_deriv(Z[:, 0]+r*A[:, 0]),
                 label='State Constraint', color='red')
-        # plt.plot(Z[:, 0], u_deriv(Z[:, 0]+r*A[:, 0]),
-        #          label=r'$u^\prime(z + r a)$', color = 'red')
-        # plt.view_init(35, 35)
+        plt.plot(Z[:, 0], Moll_Va[:,0], label='FDM Solution', color='blue', linestyle=":")
         plt.xlabel('$z$')
-        # plt.ylim(0.75, 1.10)
         plt.legend()
-        # plt.show()
-        # ax.set_zlabel('$\partial V / \partial a$')
-        # ax.set_zlabel('Difference')
-        # ax.set_title('Deep Learning Solution')
         plt.savefig('./Figure/' +savefolder+ '/' + saveName + '_VaSlice_{}.png'.format(i),bbox_inches='tight')
         plt.close('all')
 
@@ -481,26 +432,31 @@ Xgrid = np.vstack([A.flatten(), Z.flatten()]).T
 
 # simulate process at current t 
 
-fitted_V = sess.run([V], feed_dict={
-                    a_interior_tnsr: Xgrid[:,0:1], z_interior_tnsr: Xgrid[:,1:2]})[0]
-fitted_c = sess.run([numerical_c], feed_dict={a_interior_tnsr: Xgrid[:,0:1], z_interior_tnsr: Xgrid[:,1:2]})[0]
-fitted_Va = sess.run([V_a], feed_dict={
-                    a_interior_tnsr: Xgrid[:,0:1], z_interior_tnsr: Xgrid[:,1:2]})[0]
-fitted_Vaa = sess.run([V_aa], feed_dict={
-                    a_interior_tnsr: Xgrid[:,0:1], z_interior_tnsr: Xgrid[:,1:2]})[0]
-fitted_Vz = sess.run([V_z], feed_dict={
-                    a_interior_tnsr: Xgrid[:,0:1], z_interior_tnsr: Xgrid[:,1:2]})[0]
-fitted_Vzz = sess.run([V_zz], feed_dict={
+fitted_Va = sess.run([G_a], feed_dict={
                     a_interior_tnsr: Xgrid[:,0:1], z_interior_tnsr: Xgrid[:,1:2]})[0]
 
-Loss = sess.run([Loss_VV], feed_dict={
+fitted_V = sess.run([G], feed_dict={
+                    a_interior_tnsr: Xgrid[:,0:1], z_interior_tnsr: Xgrid[:,1:2]})[0]
+
+fitted_c = sess.run([numerical_c], feed_dict={a_interior_tnsr: Xgrid[:,0:1], z_interior_tnsr: Xgrid[:,1:2]})[0]
+
+fitted_Vaa = sess.run([G_aa], feed_dict={
+                    a_interior_tnsr: Xgrid[:,0:1], z_interior_tnsr: Xgrid[:,1:2]})[0]
+fitted_Vz = sess.run([G_z], feed_dict={
+                    a_interior_tnsr: Xgrid[:,0:1], z_interior_tnsr: Xgrid[:,1:2]})[0]
+fitted_Vzz = sess.run([G_zz], feed_dict={
+                    a_interior_tnsr: Xgrid[:,0:1], z_interior_tnsr: Xgrid[:,1:2]})[0]
+
+Loss = sess.run([Loss_GG], feed_dict={
                     a_interior_tnsr: Xgrid[:,0:1], z_interior_tnsr: Xgrid[:,1:2]})[0]
 
 
 fig = plt.figure(figsize=(16, 9))
 ax = fig.add_subplot(111, projection='3d')
-ax.plot_surface(A, Z, Loss.reshape(n_plot, n_plot), cmap='viridis')
-# ax.view_init(35, 35)
+ax.plot_wireframe(A, Z, np.zeros_like(A), color='red' , rcount=10, ccount=10)
+surf = ax.plot_surface(A, Z, Loss.reshape(n_plot, n_plot), cmap='viridis')
+fig.colorbar(surf, ax=ax)
+ax.view_init(35, 35)
 ax.set_xlabel('$a$')
 ax.set_ylabel('$z$')
 ax.set_zlim(-10,5)
@@ -563,7 +519,6 @@ ax.set_zlim(0.75,1.10)
 # ax.set_title('Deep Learning Solution')
 plt.savefig('./Figure/' +savefolder+ '/' + saveName + '_Va.png',bbox_inches='tight')
 
-Moll_Va = pd.read_csv("./MollData/Va_Upwind.csv", header = None)
 
 fig = plt.figure(figsize=(16, 9))
 ax = fig.add_subplot(111, projection='3d')
@@ -658,3 +613,15 @@ pd.DataFrame(fitted_Va.reshape(n_plot, n_plot)).to_csv('./Figure/' +savefolder+ 
 
 
 
+fig = plt.figure(figsize=(16, 9))
+plt.plot(Z[:, 0], fitted_Va.reshape(n_plot, n_plot)[:, 0],
+        label='NN Solution', color='black')
+# plt.plot(Z[:,0], Moll_Va[:,0],label='$\partial_a v(a,z)$: Upwind')
+plt.plot(Z[:, 0], u_deriv(Z[:, 0]+r*A[:, 0]),
+        label='State Constraint', color='red')
+plt.plot(Z[:, 0], Moll_Va[:,0],
+        label='FDM Solution', color='blue', linestyle=":")
+plt.xlabel('$z$')
+# plt.ylim(0.75, 1.10)
+plt.legend()
+plt.savefig('./Figure/' +savefolder+ '/' + saveName + '_VaSlice.png', bbox_inches='tight')
