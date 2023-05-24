@@ -226,12 +226,17 @@ plt.rcParams['text.usetex']=True
 Moll_Vaforward600 = pd.read_csv(
     "./MollData/Va_f_600,600_Shrink.csv", header=None)
 Moll_Vaforward10000 = pd.read_csv("./MollData/Va_f_10000,600_Shrink.csv", header=None)
+Moll_Vaforward40000 = pd.read_csv("./MollData/Va_f_40000,600.csv", header=None)
 Moll_Vaforward600 = np.array(Moll_Vaforward600)
 Moll_Vaforward10000 = np.array(Moll_Vaforward10000)
+Moll_Vaforward40000 = np.array(Moll_Vaforward40000)
 
+print(Z[:, 0][Moll_Vaforward10000[:, 0] - u_deriv(Z[:, 0]+r*A[:, 0]) > 0].min())
 
 # pd.DataFrame(Moll_Vaforward600[:,0]).to_csv("./MollData/Va_f_600,600_Shrink.csv",header=False,index=False)    
 # pd.DataFrame(Moll_Vaforward10000[:,0]).to_csv("./MollData/Va_f_10000,600_Shrink.csv",header=False,index=False)    
+pd.DataFrame(Moll_Vaforward40000[:, 0]).to_csv(
+    "./MollData/Va_f_40000,600_Shrink.csv", header=False, index=False)
 
 aspace = np.linspace(-0.02, 4, 600)
 zspace = np.linspace(zmean*0.8, zmean*1.2, 600)
@@ -278,6 +283,27 @@ plt.legend()
 # ax.set_title('Deep Learning Solution')
 plt.savefig('./MollData/Va_FB_10000,600.pdf', bbox_inches='tight')
 
+aspace = np.linspace(-0.02, 4, 40000)
+zspace = np.linspace(zmean*0.8, zmean*1.2, 600)
+A, Z = np.meshgrid(aspace, zspace)
+
+fig = plt.figure(figsize=(16, 9))
+plt.plot(Z[:, 0], Moll_Vaforward40000[:, 0],
+         label=r'$\partial_a^{Forward} v( \underline a,z)$', color='black')
+# plt.plot(Z[:,0], Moll_Va[:,0],label='$\partial_a v(a,z)$: Upwind')
+plt.plot(Z[:, 0], u_deriv(Z[:, 0]+r*A[:, 0]),
+         label=r'$u^\prime(z + r \underline a )$', color='red')
+# plt.plot(Z[:, 0], u_deriv(Z[:, 0]+r*A[:, 0]),
+#          label=r'$u^\prime(z + r a)$', color = 'red')
+# plt.view_init(35, 35)
+plt.xlabel('$z$')
+plt.ylim(0.75, 1.10)
+plt.legend()
+# plt.show()
+# ax.set_zlabel('$\partial V / \partial a$')
+# ax.set_zlabel('Difference')
+# ax.set_title('Deep Learning Solution')
+plt.savefig('./MollData/Va_FB_40000,600.pdf', bbox_inches='tight')
 
 Moll_Vaforward600 = pd.read_csv("./MollData/VaUpwind_600,600_Shrink.csv", header=None)
 Moll_Vaforward10000 = pd.read_csv("./MollData/VaUpwind_10000,600_Shrink.csv", header=None)
@@ -286,10 +312,14 @@ Moll_Vaforward10000 = np.array(Moll_Vaforward10000)
 # pd.DataFrame(Moll_Vaforward600[:,0]).to_csv("./MollData/VaUpwind_600,600_Shrink.csv",header=False,index=False)    
 # pd.DataFrame(Moll_Vaforward10000[:,0]).to_csv("./MollData/VaUpwind_10000,600_Shrink.csv",header=False,index=False)    
 
+Moll_Vaforward40000 = pd.read_csv("./MollData/VaUpwind_40000,600.csv", header=None)
+
+Moll_Vaforward40000 = np.array(Moll_Vaforward40000)
+pd.DataFrame(Moll_Vaforward40000[:,0]).to_csv("./MollData/VaUpwind_40000,600_Shrink.csv",header=False,index=False)    
+
 aspace = np.linspace(-0.02, 4, 600)
 zspace = np.linspace(zmean*0.8, zmean*1.2, 600)
 A, Z = np.meshgrid(aspace, zspace)
-
 
 fig = plt.figure(figsize=(16, 9))
 plt.plot(Z[:, 0], Moll_Vaforward600[:, 0],
@@ -330,3 +360,25 @@ plt.legend()
 # ax.set_zlabel('Difference')
 # ax.set_title('Deep Learning Solution')
 plt.savefig('./MollData/Va_Upwind_10000,600.pdf', bbox_inches='tight')
+
+aspace = np.linspace(-0.02, 4, 40000)
+zspace = np.linspace(zmean*0.8, zmean*1.2, 600)
+A, Z = np.meshgrid(aspace, zspace)
+
+fig = plt.figure(figsize=(16, 9))
+plt.plot(Z[:, 0], Moll_Vaforward40000[:, 0],
+         label=r'$\partial_a^{Forward} v( \underline a,z)$', color='black')
+# plt.plot(Z[:,0], Moll_Va[:,0],label='$\partial_a v(a,z)$: Upwind')
+plt.plot(Z[:, 0], u_deriv(Z[:, 0]+r*A[:, 0]),
+         label=r'$u^\prime(z + r \underline a )$', color='red')
+# plt.plot(Z[:, 0], u_deriv(Z[:, 0]+r*A[:, 0]),
+#          label=r'$u^\prime(z + r a)$', color = 'red')
+# plt.view_init(35, 35)
+plt.xlabel('$z$')
+plt.ylim(0.75, 1.10)
+plt.legend()
+# plt.show()
+# ax.set_zlabel('$\partial V / \partial a$')
+# ax.set_zlabel('Difference')
+# ax.set_title('Deep Learning Solution')
+plt.savefig('./MollData/Va_Upwind_40000,600.pdf', bbox_inches='tight')
