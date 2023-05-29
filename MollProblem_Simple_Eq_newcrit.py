@@ -74,7 +74,7 @@ n_test = 100  # Points on plot grid for each dimension
 n_plot = 600
 # Save options
 saveOutput = False
-savefolder = 'Moll_control_Eq/num_layers_FFNN_{}_activation_FFNN_{}_num_layers_RNN_{}_nodes_per_layer_{}/sampling_stages_{}_steps_per_sample_{}_starting_learning_rate_{}_weight_{}/nSim_interior_{}_nSim_boundary_{}/id_{}/'.format(num_layers_FFNN, activation_FFNN, num_layers_RNN, nodes_per_layer, sampling_stages, steps_per_sample, starting_learning_rate, weight, nSim_interior, nSim_boundary, idd)
+savefolder = 'Moll_control_Eq_newcrit/num_layers_FFNN_{}_activation_FFNN_{}_num_layers_RNN_{}_nodes_per_layer_{}/sampling_stages_{}_steps_per_sample_{}_starting_learning_rate_{}_weight_{}/nSim_interior_{}_nSim_boundary_{}/id_{}/'.format(num_layers_FFNN, activation_FFNN, num_layers_RNN, nodes_per_layer, sampling_stages, steps_per_sample, starting_learning_rate, weight, nSim_interior, nSim_boundary, idd)
 saveName   = 'MollProblem' 
 saveFigure = True
 figureName = 'MollProblem' 
@@ -85,7 +85,7 @@ os.makedirs('./Figure/'+savefolder+'/',exist_ok=True)
 os.makedirs('./SavedNets/' +savefolder+ '/', exist_ok=True)
 # market price of risk
 
-Moll_Va = pd.read_csv("./MollData/Va_f_600,600_Shrink.csv", header = None)
+Moll_Va = pd.read_csv("./MollData/Va_f_40000,600_Shrink.csv", header = None)
 print(Moll_Va.shape)
 Moll_Va = np.array(Moll_Va)
 
@@ -233,6 +233,20 @@ def loss_concave(model, X):
     return L
 
 
+def loss_neumann_boundary_alower(model, X):
+    a = X[:,0:1]
+    z = X[:,1:2]
+
+    V = model(tf.stack([a[:,0],z[:,0]], axis=1))
+    V_a = tf.gradients(V, a)[0]
+    V_a = tf.maximum(1e-10 * tf.ones_like(V), V_a)
+
+    Diff = tf.minimum(V_a-u_deriv(z+r*a),tf.zeros_like(V))
+
+    L = tf.reduce_mean(tf.square(Diff))
+
+    return L
+
 def loss(model, X_interior, X_alower, X_zboundary):
     ''' Compute total loss for training.
     
@@ -247,8 +261,9 @@ def loss(model, X_interior, X_alower, X_zboundary):
     
     L3 = loss_zboundarys(model, X_zboundary) + loss_concave(model, X_interior)
 
-    
-    return L1, L2, L3, Loss_V_interior, Loss_V_alower
+    L4 = loss_neumann_boundary_alower(model, X_alower)
+
+    return L1, L2, L3, L4, Loss_V_interior, Loss_V_alower
     
 
 # Set up network
@@ -265,9 +280,9 @@ X_zboundary_tnsr = tf.placeholder(tf.float32, [None,2])
 
 
 # loss 
-L1_tnsr, L2_tnsr, L3_tnsr, Loss_V_interior_tnsr, Loss_V_alower_tnsr = loss(
+L1_tnsr, L2_tnsr, L3_tnsr, L4_tnsr, Loss_V_interior_tnsr, Loss_V_alower_tnsr = loss(
     model, X_interior_tnsr, X_alower_tnsr, X_zboundary_tnsr)
-Loss_tnsr = L1_tnsr + L2_tnsr +  L3_tnsr
+Loss_tnsr = L1_tnsr + L2_tnsr +  L3_tnsr + L4_tnsr
 
 c_tnsr = control_c(model, X_interior_tnsr)
 V_tnsr, V_a_tnsr, V_aa_tnsr, V_z_tnsr, V_zz_tnsr = value_info(model,X_interior_tnsr)
@@ -297,7 +312,7 @@ for i in range(sampling_stages):
     X_interior, X_alower, X_zboundary = sampler(nSim_interior, nSim_boundary)
     
     for _ in range(steps_per_sample):
-        loss,L1,L2,L3,_ = sess.run([Loss_tnsr, L1_tnsr, L2_tnsr, L3_tnsr, optimizer],
+        loss,L1,L2,L3,L4,_ = sess.run([Loss_tnsr, L1_tnsr, L2_tnsr, L3_tnsr, L4_tnsr, optimizer],
                                    feed_dict={X_interior_tnsr: X_interior, X_alower_tnsr: X_alower, X_zboundary_tnsr: X_zboundary})
         loss_list.append(loss)
     
@@ -305,11 +320,11 @@ for i in range(sampling_stages):
     if loss>1e-5:
         if i%100==0:
 
-            print("{:7d}, {:.8f}, {:.8f}, {:.8f}, {:.8f}".format(int(i), loss,L1,L2,L3))
+            print("{:7d}, {:.8f}, {:.8f}, {:.8f}, {:.8f}, {:.8f}".format(int(i), loss, L1, L2, L3, L4))
     else:
         if i%10==0:
 
-            print("{:7d}, {:.8f}, {:.8f}, {:.8f}, {:.8f}".format(int(i), loss,L1,L2,L3))        
+            print("{:7d}, {:.8f}, {:.8f}, {:.8f}, {:.8f}, {:.8f}".format(int(i), loss, L1, L2, L3, L4))
             
     if i%4000==0:
         

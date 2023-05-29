@@ -98,13 +98,13 @@ os.makedirs('./Figure/'+savefolder+'/',exist_ok=True)
 os.makedirs('./SavedNets/' +savefolder+ '/', exist_ok=True)
 # market price of risk
 
-Moll_Va = pd.read_csv("./MollData/Va_Upwind.csv", header = None)
+Moll_Va = pd.read_csv("./MollData/VaUpwind_600,600_Shrink.csv", header = None)
 print(Moll_Va.shape)
 Moll_Va = np.array(Moll_Va)
 
-# Moll_Va_C = pd.read_csv("./MollData/Va_f_40000_40.csv", header = None)
-# print(Moll_Va_C.shape)
-# Moll_Va_C = np.array(Moll_Va_C)
+Moll_Va2 = pd.read_csv("./MollData/VaUpwind_10000,600_Shrink.csv", header = None)
+print(Moll_Va2.shape)
+Moll_Va2 = np.array(Moll_Va2)
 
 
 def u(c):
@@ -437,7 +437,8 @@ for i in range(sampling_stages):
                 label='NN Solution', color='black')
         plt.plot(Z[:, 0], u_deriv(Z[:, 0]+r*A[:, 0]),
                 label='State Constraint', color='red')
-        plt.plot(Z[:, 0], Moll_Va[:,0], label='FDM Solution - 400', color='blue', linestyle=":")
+        plt.plot(Z[:, 0], Moll_Va[:,0], label='FDM Solution - 600', color='blue', linestyle=":")
+        plt.plot(Z[:, 0], Moll_Va2[:,0], label='FDM Solution - 10000', color='blue', linestyle=":")
         # plt.plot(Z[:, 0], Moll_Va[:,0], label='FDM Solution - 400', color='blue', linestyle=":")
         plt.xlabel('$z$')
         plt.title("$V_{az}$" + " diff = {}".format(V_az_diff) +"$, z_{cd}$=" + "{}".format(z_cd))
@@ -552,8 +553,8 @@ plt.plot(Z[:, 0], fitted_Va.reshape(n_plot, n_plot)[:, 0],
         label='NN Solution', color='black')
 plt.plot(Z[:, 0], u_deriv(Z[:, 0]+r*A[:, 0]),
         label='State Constraint', color='red')
-plt.plot(Z[:, 0], Moll_Va[:,0],
-        label='FDM Solution - 400', color='blue', linestyle=":")
+plt.plot(Z[:, 0], Moll_Va[:,0], label='FDM Solution - 600', color='blue', linestyle=":")
+plt.plot(Z[:, 0], Moll_Va2[:,0], label='FDM Solution - 10000', color='blue', linestyle=":")
 plt.xlabel('$z$')
 # plt.ylim(0.75, 1.10)
 plt.title("$V_{az}$" + " diff = {}".format(V_az_diff) +"$, z_{cd}$=" + "{}".format(z_cd))

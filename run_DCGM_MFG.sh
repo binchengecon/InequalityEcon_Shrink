@@ -2,10 +2,11 @@
 
 
 
-python_name="MollProblem_Simple.py"
+# python_name="MollProblem_Simple.py"
 # python_name="MollProblem_Simple_Eq.py"
-# python_name="MollProblem_Simple_penalty.py"
-# python_name="MollProblem_Simple_varineq.py"
+# python_name="MollProblem_Simple_Eq_newcrit.py"
+python_name="MollProblem_Simple_ControlMini_VaCutting.py"
+# python_name="MollProblem_Simple_ControlFixed_VaCutting.py"
 
 
 # python_name="MollProblem_Simple_punishalower_max.py"
@@ -43,7 +44,7 @@ nodes_per_layer_arr=(50)
 
 
 
-sampling_stages_arr=(80000)
+sampling_stages_arr=(480000)
 # sampling_stages_arr=(2)
 # sampling_stages_arr=(30000 50000)
 steps_per_sample_arr=(10)
