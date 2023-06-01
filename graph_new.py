@@ -254,3 +254,38 @@ plt.legend()
 # ax.set_zlabel('Difference')
 # ax.set_title('Deep Learning Solution')
 plt.savefig('./MollData/Va_NN_upwind_low.pdf', bbox_inches='tight')
+Moll_VaNN_upwind = Moll_VaNN_forward.copy()
+Moll_VaNN_upwind[:, 0] = np.maximum(Moll_VaNN_forward[:, 0], u_deriv(Z[:, 0]+r*A[:, 0]))
+
+plt.style.use('default')
+plt.rcParams["savefig.bbox"] = "tight"
+# plt.rcParams["figure.figsize"] = (10,8)
+# plt.rcParams["figure.dpi"] = 500
+plt.rcParams["font.size"] = 16
+plt.rcParams['text.usetex'] = True
+# plt.rcParams["legend.frameon"] = True
+# plt.rcParams["lines.linewidth"] = 5
+
+# # Surface plot of solution u(t,x)
+fig = plt.figure(figsize=(16, 9))
+ax = fig.add_subplot(111, projection='3d')
+ax.plot_surface(A, Z, Moll_VaNN_forward, cmap='viridis')
+ax.view_init(35, 35)
+ax.set_xlabel('$a$')
+ax.set_ylabel('$z$')
+ax.set_zlim(0.75,1.10)
+# ax.set_title('$\partial V / \partial a$')
+# ax.set_title('Deep Learning Solution')
+plt.savefig('./MollData/Va_NN_forward_full.pdf',bbox_inches='tight')
+
+# # Surface plot of solution u(t,x)
+fig = plt.figure(figsize=(16, 9))
+ax = fig.add_subplot(111, projection='3d')
+ax.plot_surface(A, Z, Moll_VaNN_upwind, cmap='viridis')
+ax.view_init(35, 35)
+ax.set_xlabel('$a$')
+ax.set_ylabel('$z$')
+ax.set_zlim(0.75, 1.10)
+# ax.set_title('$\partial V / \partial a$')
+# ax.set_title('Deep Learning Solution')
+plt.savefig('./MollData/Va_NN_upwind_full.pdf', bbox_inches='tight')
