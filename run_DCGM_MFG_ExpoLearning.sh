@@ -2,22 +2,13 @@
 
 
 
-# python_name="MollProblem_Simple.py"
-# python_name="MollProblem_Simple_Eq.py"
-# python_name="MollProblem_Simple_Eq_newcrit.py"
 # python_name="MollProblem_Simple_ControlMini_VaCutting.py"
-# python_name="MollProblem_Simple_ControlFixed_VaCutting.py"
-# python_name="MollProblem_Simple_ControlMini_VaCutting_Vazz.py"
-# python_name="MollProblem_Simple_ControlMini_VaCutting_Vazz_EqSample.py"
-# python_name="MollProblem_Simple_ControlMini_VaCutting_Vaz.py"
-# python_name="MollProblem_Simple_ControlMini_VaCutting_Vaz_Vazz.py"
-# python_name="MollProblem_Simple_ControlMini_VaCutting_Vazzbind.py"
-python_name="MollProblem_Simple_ControlMini_VaCutting_Vazzbind_Vaz.py"
+# python_name="MollProblem_Simple_ControlMini.py"
+python_name="MollProblem_Simple_ControlMini_c_new.py"
+# python_name="MollProblem_Simple_ControlMini_VaFree.py"
+# python_name="MollProblem_Simple_ControlMini_VaComplex.py"
+# python_name="MollProblem_Simple_ControlMini_VaComplex_u_c_old.py"
 
-
-# python_name="MollProblem_Simple_punishalower_max.py"
-# python_name="MollProblem_Simple_punishall_max.py"
-# python_name="MollProblem_Simple_upper.py"
 
 
 # num_layers_FFNN_arr=(0 4 5 6 7 8)
@@ -50,7 +41,7 @@ nodes_per_layer_arr=(50)
 
 
 
-sampling_stages_arr=(480000)
+sampling_stages_arr=(400000)
 # sampling_stages_arr=(2)
 # sampling_stages_arr=(30000 50000)
 steps_per_sample_arr=(10)
