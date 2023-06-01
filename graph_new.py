@@ -142,7 +142,7 @@ plt.plot(Z[:, 0], Moll_VaNN_forward[:, 0],
          label=r'$\partial_a^{NN} v( \underline a,z)$', color='red')
 # plt.plot(Z[:,0], Moll_Va[:,0],label='$\partial_a v(a,z)$: Upwind')
 plt.plot(Z[:, 0], Moll_Vaforward10000[:, 0],
-         label=r'$\partial_a^{Forward} v( \underline a,z)$' + r'$, {High \ Resolution}$', color='blue', linestyle='--')
+         label=r'$\partial_a^{Forward} v( \underline a,z)$' + r'$, {Medium \ Resolution}$', color='blue', linestyle='--')
 plt.plot(Z[:, 0], u_deriv(Z[:, 0]+r*A[:, 0]),
          label=r'$u^\prime(z + r \underline a )$', color='black')
 # plt.plot(Z[:, 0], u_deriv(Z[:, 0]+r*A[:, 0]),
@@ -161,7 +161,7 @@ plt.plot(Z[:, 0], Moll_VaNN_forward[:, 0],
          label=r'$\partial_a^{NN} v( \underline a,z)$', color='red')
 # plt.plot(Z[:,0], Moll_Va[:,0],label='$\partial_a v(a,z)$: Upwind')
 plt.plot(Z[:, 0], Moll_Vaforward600[:, 0],
-         label=r'$\partial_a^{Forward} v( \underline a,z)$' + r'$, {High \ Resolution}$', color='blue', linestyle='--')
+         label=r'$\partial_a^{Forward} v( \underline a,z)$' + r'$, {Low \ Resolution}$', color='blue', linestyle='--')
 plt.plot(Z[:, 0], u_deriv(Z[:, 0]+r*A[:, 0]),
          label=r'$u^\prime(z + r \underline a )$', color='black')
 # plt.plot(Z[:, 0], u_deriv(Z[:, 0]+r*A[:, 0]),
@@ -177,11 +177,10 @@ plt.legend()
 plt.savefig('./MollData/Va_NN_forward_low.pdf', bbox_inches='tight')
 
 
-Moll_VaNN_upwind = max(u_deriv(Z[:, 0]+r*A[:, 0]), Moll_VaNN_forward)
 
 
 fig = plt.figure(figsize=(16, 9))
-plt.plot(Z[:, 0], Moll_VaNN_upwind[:, 0],
+plt.plot(Z[:, 0], np.maximum(Moll_VaNN_forward[:, 0], u_deriv(Z[:, 0]+r*A[:, 0])),
          label=r'$\partial_a^{NN} v( \underline a,z)$', color='red')
 # plt.plot(Z[:,0], Moll_Va[:,0],label='$\partial_a v(a,z)$: Upwind')
 plt.plot(Z[:, 0], u_deriv(Z[:, 0]+r*A[:, 0]),
@@ -199,11 +198,11 @@ plt.legend()
 plt.savefig('./MollData/Va_NN_forward.pdf', bbox_inches='tight')
 
 fig = plt.figure(figsize=(16, 9))
-plt.plot(Z[:, 0], Moll_VaNN_upwind[:, 0],
+plt.plot(Z[:, 0], np.maximum(Moll_VaNN_forward[:, 0], u_deriv(Z[:, 0]+r*A[:, 0])),
          label=r'$\partial_a^{NN} v( \underline a,z)$', color='red')
 # plt.plot(Z[:,0], Moll_Va[:,0],label='$\partial_a v(a,z)$: Upwind')
 plt.plot(Z[:, 0], Moll_VaUpwind40000[:, 0],
-         label=r'$\partial_a^{Forward} v( \underline a,z)$' + r'$, {High \ Resolution}$', color='blue', linestyle='--')
+         label=r'$\partial_a^{Upwind} v( \underline a,z)$' + r'$, {High \ Resolution}$', color='blue', linestyle='--')
 plt.plot(Z[:, 0], u_deriv(Z[:, 0]+r*A[:, 0]),
          label=r'$u^\prime(z + r \underline a )$', color='black')
 # plt.plot(Z[:, 0], u_deriv(Z[:, 0]+r*A[:, 0]),
@@ -218,11 +217,11 @@ plt.legend()
 # ax.set_title('Deep Learning Solution')
 plt.savefig('./MollData/Va_NN_upwind_high.pdf', bbox_inches='tight')
 fig = plt.figure(figsize=(16, 9))
-plt.plot(Z[:, 0], Moll_VaNN_upwind[:, 0],
+plt.plot(Z[:, 0], np.maximum(Moll_VaNN_forward[:, 0], u_deriv(Z[:, 0]+r*A[:, 0])),
          label=r'$\partial_a^{NN} v( \underline a,z)$', color='red')
 # plt.plot(Z[:,0], Moll_Va[:,0],label='$\partial_a v(a,z)$: Upwind')
 plt.plot(Z[:, 0], Moll_VaUpwind10000[:, 0],
-         label=r'$\partial_a^{Forward} v( \underline a,z)$' + r'$, {High \ Resolution}$', color='blue', linestyle='--')
+         label=r'$\partial_a^{Upwind} v( \underline a,z)$' + r'$, {Medium \ Resolution}$', color='blue', linestyle='--')
 plt.plot(Z[:, 0], u_deriv(Z[:, 0]+r*A[:, 0]),
          label=r'$u^\prime(z + r \underline a )$', color='black')
 # plt.plot(Z[:, 0], u_deriv(Z[:, 0]+r*A[:, 0]),
@@ -237,11 +236,11 @@ plt.legend()
 # ax.set_title('Deep Learning Solution')
 plt.savefig('./MollData/Va_NN_upwind_medium.pdf', bbox_inches='tight')
 fig = plt.figure(figsize=(16, 9))
-plt.plot(Z[:, 0], Moll_VaNN_upwind[:, 0],
+plt.plot(Z[:, 0], np.maximum(Moll_VaNN_forward[:, 0], u_deriv(Z[:, 0]+r*A[:, 0])),
          label=r'$\partial_a^{NN} v( \underline a,z)$', color='red')
 # plt.plot(Z[:,0], Moll_Va[:,0],label='$\partial_a v(a,z)$: Upwind')
 plt.plot(Z[:, 0], Moll_VaUpwind600[:, 0],
-         label=r'$\partial_a^{Forward} v( \underline a,z)$' + r'$, {High \ Resolution}$', color='blue', linestyle='--')
+         label=r'$\partial_a^{Upwind} v( \underline a,z)$' + r'$, {Low \ Resolution}$', color='blue', linestyle='--')
 plt.plot(Z[:, 0], u_deriv(Z[:, 0]+r*A[:, 0]),
          label=r'$u^\prime(z + r \underline a )$', color='black')
 # plt.plot(Z[:, 0], u_deriv(Z[:, 0]+r*A[:, 0]),
