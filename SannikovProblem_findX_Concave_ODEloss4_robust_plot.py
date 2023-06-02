@@ -2,9 +2,6 @@
 
 #%% import needed packages
 
-import DGM2
-import tensorflow.compat.v1 as tf
-tf.disable_v2_behavior()
 import numpy as np
 import matplotlib.pyplot as plt
 import os
@@ -135,6 +132,10 @@ def gamma(a):
 
 
 
+
+
+
+
 #%% Sampling function - randomly sample time-space pairs
 
 X_plotF0 = np.linspace(0,1,1000)
@@ -145,7 +146,7 @@ fig, axs = plt.subplot_mosaic(
 [["left column", "right top"],
 ["left column", "right mid"],
 ["left column", "right dis"],
-["left column", "right down"]], figsize=(4 * figwidth, 2 * figwidth)
+["left column", "right down"]], figsize=(20, 10), sharex=True
 )
 
 
@@ -187,6 +188,7 @@ for id in range(len(slopearr)):
     axs["left column"].set_title("Profit $F(W)$")
     axs["left column"].grid(linestyle=':')
     axs["left column"].legend()
+    axs["left column"].set_xlabel("$W$")
 
     axs["right top"].plot(X_plot, fitted_a, color = color_one, label = "$\\xi={}$".format(xiarr[id]))
     axs["right top"].plot(X_plot, ODE_a, color = 'black', linestyle='--')
@@ -218,6 +220,7 @@ for id in range(len(slopearr)):
     axs["right down"].set_xlim(X_low,X_high)
     axs["right down"].set_title("Drift of $W$")
     axs["right down"].grid(linestyle=':')
+    axs["right down"].set_xlabel("$W$")
 
 
 
@@ -232,7 +235,7 @@ figwidth = 10
 fig, axs = plt.subplot_mosaic(
 [["left top", "right top"],
 ["left mid", "right mid"],
-["down", "down"]], figsize=(3 * figwidth, 2 * figwidth)
+["down", "down"]], figsize=(15, 10), sharex=True
 )
 
 
@@ -271,7 +274,8 @@ for id in range(len(slopearr)):
     axs["left top"].set_title("Difference in Profit $F(W)$")
     axs["left top"].set_xlim(X_low,X_high)
     axs["left top"].grid(linestyle=':')
-    
+    axs["left top"].set_xlabel("$W$")
+
     axs["left mid"].plot(X_plot, Diff_a, color = color_one, label = "$\\xi={}$".format(xiarr[id]))
     axs["left mid"].set_title("Difference in Effort $\\alpha(W)$")
     axs["left mid"].grid(linestyle=':')
@@ -292,6 +296,7 @@ for id in range(len(slopearr)):
     axs["down"].grid(linestyle=':')
     axs["down"].set_xlim(X_low,X_high)
     axs["down"].legend()
+    axs["down"].set_xlabel("$W$")
 
 plt.savefig('./Figure/' +savefolder+ '/' + figureName + '_Diff_{}.pdf'.format(len(xiarr)))
 
@@ -307,8 +312,9 @@ fig, axs = plt.subplot_mosaic(
 [["left column", "right top"],
 ["left column", "right mid"],
 ["left column", "right dis"],
-["left column", "right down"]], figsize=(4 * figwidth, 2 * figwidth)
+["left column", "right down"]], figsize=(20, 10), sharex=True
 )
+
 
 
 for id in range(len(slopearr)):
@@ -376,6 +382,7 @@ for id in range(len(slopearr)):
     axs["left column"].set_title("Profit $F(W)$")
     axs["left column"].grid(linestyle=':')
     axs["left column"].legend()
+    axs["left column"].set_xlabel("$W$")
 
     axs["right top"].plot(X_plot, fitted_a, color = color_one, label = "$\\xi={}$".format(xiarr[id]))
     axs["right top"].plot(X_plot, ODE_a, color = 'black', linestyle='--')
@@ -407,6 +414,7 @@ for id in range(len(slopearr)):
     axs["right down"].set_xlim(X_low,X_high)
     axs["right down"].set_title("Drift of $W$")
     axs["right down"].grid(linestyle=':')
+    axs["right down"].set_xlabel("$W$")
 
 
 
@@ -421,9 +429,15 @@ figwidth = 10
 fig, axs = plt.subplot_mosaic(
 [["left top", "right top"],
 ["left mid", "right mid"],
-["down", "down"]], figsize=(3 * figwidth, 2 * figwidth)
+["down", "down"]], figsize=(15, 10), sharex=True
 )
 
+# fig, axs = plt.subplot_mosaic(
+# [["left column", "right top"],
+# ["left column", "right mid"],
+# ["left column", "right dis"],
+# ["left column", "right down"]], figsize=(20, 10), sharex=True
+# )
 
 for id in range(len(slopearr)):
 
@@ -506,9 +520,91 @@ for id in range(len(slopearr)):
     axs["down"].grid(linestyle=':')
     axs["down"].set_xlim(X_low,X_high)
     axs["down"].legend()
+    axs["down"].set_xlabel("$W$")
 
 plt.savefig('./Figure/' +savefolder+ '/' + figureName + '_Diff_Stop_{}.pdf'.format(len(xiarr)))
 
 plt.close('all')        
             
 
+
+fig = plt.figure(figsize=(16, 9))
+
+
+for id in range(len(slopearr)):
+
+    guess = slopearr[id]
+    xi = xiarr[id]
+    color_one = colors[id % len(colors)]
+
+    def ODE_dis(W, y):
+        F, V = y
+
+        F_update = V
+
+        if V < 0:
+            c = (V/2)**2
+        else:
+            c = 0
+
+        a_orig = 2/5 + 4/25 * V + 2*F+2*c-2*V*W + 2*V*np.sqrt(c)
+
+        a = a_orig * (a_orig > 0) + 0*(a_orig <= 0)
+
+        h = -1/xi*V*(a+2/5)*sigma
+
+        upper = F - a + c - V*(W-np.sqrt(c)+a**2/2 + 2/5 * a)
+        upper += -xi/2*h**2 -V*(a+2/5)*sigma*h
+        
+        lower = r*(a+2/5)**2 * sigma**2/2
+
+        V_update = upper/lower
+
+        return [F_update, V_update]
+
+
+
+    sol = solve_ivp(ODE_dis, t_span=(0, 1), y0=[
+        0, guess], method="DOP853", max_step=0.0001)
+
+
+    X_plot = sol.t
+    ODE_F = sol.y[0]
+    ODE_V = sol.y[1]
+
+
+
+    ODE_X = X_plot[1:-1]
+    ODE_0dF = ODE_F[1:-1]
+    ODE_dF = (ODE_F[2:]-ODE_F[0:-2])/(2*(X_plot[2]-X_plot[1]))
+    ODE_ddF = (ODE_F[2:]+ODE_F[0:-2]-2*ODE_F[1:-1])/(X_plot[2]-X_plot[1])**2
+
+
+
+    c_orig = (ODE_dF/2)**2 * (ODE_dF < 0)
+
+    c = c_orig
+
+    a_orig = 2/5 + 4/25 * ODE_dF + 2*ODE_0dF + \
+        2*c-2*ODE_dF*ODE_X + 2*ODE_dF*np.sqrt(c)
+
+    a = a_orig * (a_orig > 0) + 0*(a_orig <= 0)
+
+
+    h = -1/xi*ODE_dF*(a+2/5)*sigma
+
+
+    upper = ODE_0dF - a + c - ODE_dF*(ODE_X-np.sqrt(c)+a**2/2 + 2/5 * a)
+    upper += -xi/2*h**2 -ODE_dF*(a+2/5)*sigma*h
+
+    lower = r*(a+2/5)**2 * sigma**2/2
+
+    ODE_error = upper/lower - ODE_ddF
+
+    plt.plot(ODE_X, np.log(abs(ODE_error))/np.log(10), color = color_one, label = "$\\xi={}$".format(xiarr[id]))
+    plt.xlabel('$W$')
+    plt.legend()
+
+plt.savefig('./Figure/' +savefolder+ '/' + figureName + '_ODEerror_{}.pdf'.format(len(xiarr)))
+
+plt.close('all')       

@@ -2,9 +2,6 @@
 
 #%% import needed packages
 
-import DGM2
-import tensorflow.compat.v1 as tf
-tf.disable_v2_behavior()
 import numpy as np
 import matplotlib.pyplot as plt
 import os
@@ -32,7 +29,7 @@ plt.style.use('classic')
 plt.rcParams["savefig.bbox"] = "tight"
 # plt.rcParams["figure.figsize"] = (10,8)
 # plt.rcParams["figure.dpi"] = 500
-plt.rcParams["font.size"] = 20
+plt.rcParams["font.size"] = 15
 # plt.rcParams["legend.frameon"] = True
 plt.rcParams["lines.linewidth"] = 4
 #%% Parameters 
@@ -134,7 +131,7 @@ figwidth = 10
 fig, axs = plt.subplot_mosaic(
 [["left column", "right top"],
 ["left column", "right mid"],
-["left column", "right down"]], figsize=(4 * figwidth, 2 * figwidth)
+["left column", "right down"]], figsize=(20, 10), sharex=True
 )
 
 
@@ -164,14 +161,15 @@ Diff_c = Sannikov[:,13:14]
 Diff_drift = Sannikov[:,15:16] 
 
 
-axs["left column"].plot(X_plot, fitted_V, color = 'red', label="Neural Network Solution")
-axs["left column"].plot(X_plot, ODE_F, color = 'black', linestyle='--', label="Runge Kutta Solution")
+axs["left column"].plot(X_plot, fitted_V, color = 'red', label="Neural Network")
+axs["left column"].plot(X_plot, ODE_F, color = 'black', linestyle='--', label="Runge Kutta")
 axs["left column"].set_ylim(-1,0.15)
 axs["left column"].plot(X_plotF0, F0(X_plotF0), color = 'black')
 axs["left column"].set_xlim(X_low,X_high)
 axs["left column"].set_title("Profit $F(W)$")
 axs["left column"].grid(linestyle=':')
 axs["left column"].legend()
+axs["left column"].set_xlabel("$W$")
 
 axs["right top"].plot(X_plot, fitted_a, color = 'red')
 axs["right top"].plot(X_plot, ODE_a, color = 'black', linestyle='--')
@@ -194,6 +192,7 @@ axs["right down"].set_ylim(0, 0.1)
 axs["right down"].set_xlim(X_low,X_high)
 axs["right down"].set_title("Drift of $W$")
 axs["right down"].grid(linestyle=':')
+axs["right down"].set_xlabel("$W$")
 
 
 
@@ -207,7 +206,7 @@ plt.close('all')
 figwidth = 10
 fig, axs = plt.subplot_mosaic(
 [["left top", "right top"],
-["left mid", "right mid"]], figsize=(3 * figwidth, 2 * figwidth)
+["left mid", "right mid"]], figsize=(20, 10), sharex=True
 )
 
 
@@ -272,7 +271,7 @@ figwidth = 10
 fig, axs = plt.subplot_mosaic(
 [["left column", "right top"],
 ["left column", "right mid"],
-["left column", "right down"]], figsize=(4 * figwidth, 2 * figwidth)
+["left column", "right down"]], figsize=(20, 10), sharex=True
 )
 
 
@@ -329,14 +328,15 @@ Diff_drift = Sannikov[:,15:16][:index+2]
 
 
 
-axs["left column"].plot(X_plot, fitted_V, color = 'red', label="Neural Network Solution")
-axs["left column"].plot(X_plot, ODE_F, color = 'black', linestyle='--', label="Runge Kutta Solution")
+axs["left column"].plot(X_plot, fitted_V, color = 'red', label="Neural Network")
+axs["left column"].plot(X_plot, ODE_F, color = 'black', linestyle='--', label="Runge Kutta")
 axs["left column"].set_ylim(-1,0.15)
 axs["left column"].plot(X_plotF0, F0(X_plotF0), color = 'black')
 axs["left column"].set_xlim(X_low,X_high)
 axs["left column"].set_title("Profit $F(W)$")
 axs["left column"].grid(linestyle=':')
 axs["left column"].legend()
+axs["left column"].set_xlabel("$W$")
 
 axs["right top"].plot(X_plot, fitted_a, color = 'red')
 axs["right top"].plot(X_plot, ODE_a, color = 'black', linestyle='--')
@@ -363,6 +363,7 @@ axs["right down"].set_ylim(0, 0.1)
 axs["right down"].set_xlim(X_low,X_high)
 axs["right down"].set_title("Drift of $W$")
 axs["right down"].grid(linestyle=':')
+axs["right down"].set_xlabel("$W$")
 
 
 
@@ -376,7 +377,7 @@ plt.close('all')
 figwidth = 10
 fig, axs = plt.subplot_mosaic(
 [["left top", "right top"],
-["left mid", "right mid"]], figsize=(3 * figwidth, 2 * figwidth)
+["left mid", "right mid"]], figsize=(15, 10), sharex=True
 )
 
 
@@ -441,6 +442,7 @@ axs["left mid"].plot(X_plot, Diff_a, color = 'red' )
 axs["left mid"].set_title("Difference in Effort $\\alpha(W)$")
 axs["left mid"].grid(linestyle=':')
 axs["left mid"].set_xlim(X_low,X_high)
+axs["left mid"].set_xlabel("$W$")
 
 axs["right top"].plot(X_plot, Diff_c, color = 'red' )
 axs["right top"].set_title("Difference in Consumption $\\pi(W)$")
@@ -451,10 +453,79 @@ axs["right mid"].plot(X_plot, Diff_drift, color = 'red' )
 axs["right mid"].set_title("Difference in Drift of $W$")
 axs["right mid"].grid(linestyle=':')
 axs["right mid"].set_xlim(X_low,X_high)
-# axs["right mid"].legend()
+axs["right mid"].set_xlabel("$W$")
 
 plt.savefig('./Figure/' +savefolder+ '/' + figureName + '_Diff_Stop2.pdf')
 
 plt.close('all')        
         
 
+fig = plt.figure(figsize=(16, 9))
+
+
+
+def ODE(W, y):
+    F,V = y
+
+    
+    F_update = V
+    
+    if V<0:
+        c=(V/2)**2
+    else:
+        c = 0
+    
+    a_orig = 2/5 + 4/25 *V + 2*F+2*c-2*V*W +2*V*np.sqrt(c)
+    
+    a = a_orig * (a_orig > 0) + 0*(a_orig <=0)
+    
+
+    upper = F - a + c - V*(W-np.sqrt(c)+a**2/2 + 2/5 * a)
+    lower = r*(a+2/5)**2 * sigma**2/2
+    
+    V_update = upper/lower
+    
+    return [F_update, V_update]
+
+
+
+sol = solve_ivp(ODE, t_span=(0, 1), y0=[
+    0, guess], method="DOP853", max_step=0.0001)
+
+
+X_plot = sol.t[sol.y[0] > -sol.t**2]
+ODE_F = sol.y[0][sol.y[0] > -sol.t**2]
+ODE_V = sol.y[1][sol.y[0] > -sol.t**2]
+
+
+
+ODE_X = X_plot[1:-1]
+ODE_0dF = ODE_F[1:-1]
+ODE_dF = (ODE_F[2:]-ODE_F[0:-2])/(2*(X_plot[2]-X_plot[1]))
+ODE_ddF = (ODE_F[2:]+ODE_F[0:-2]-2*ODE_F[1:-1])/(X_plot[2]-X_plot[1])**2
+
+
+
+c_orig = (ODE_dF/2)**2 * (ODE_dF < 0)
+
+c = c_orig
+
+a_orig = 2/5 + 4/25 * ODE_dF + 2*ODE_0dF + \
+    2*c-2*ODE_dF*ODE_X + 2*ODE_dF*np.sqrt(c)
+
+a = a_orig * (a_orig > 0) + 0*(a_orig <= 0)
+
+
+
+upper = ODE_0dF - a + c - ODE_dF*(ODE_X-np.sqrt(c)+a**2/2 + 2/5 * a)
+lower = r*(a+2/5)**2 * sigma**2/2
+
+ODE_error = upper/lower - ODE_ddF
+
+plt.plot(ODE_X[ODE_0dF>=-ODE_X**2], np.log(abs(ODE_error))[ODE_0dF>=-ODE_X**2]/np.log(10), color = 'black')
+plt.xlim(0,1)
+plt.xlabel('$W$')
+
+plt.savefig('./Figure/' +savefolder+ '/' + figureName + '_ODEerror.pdf')
+
+plt.close('all')       

@@ -90,7 +90,7 @@ for num_layers_FFNN in ${num_layers_FFNN_arr[@]}; do
 #SBATCH --time=1-12:00:00
 
 ####### load modules
-module load python/anaconda-2021.05
+module load python/anaconda-2022.05
 
 echo "\$SLURM_JOB_NAME"
 
