@@ -146,7 +146,7 @@ fig, axs = plt.subplot_mosaic(
 [["left column", "right top"],
 ["left column", "right mid"],
 ["left column", "right dis"],
-["left column", "right down"]], figsize=(20, 10), sharex=True
+["left down", "right down"]], figsize=(25, 15), sharex=True
 )
 
 
@@ -183,12 +183,22 @@ for id in range(len(slopearr)):
     axs["left column"].plot(X_plot, fitted_V, color = color_one, label = "$\\xi={}$".format(xiarr[id]))
     axs["left column"].plot(X_plot, ODE_F, color = 'black', linestyle='--')
     axs["left column"].set_ylim(-1,0.15)
-    axs["left column"].plot(X_plotF0, F0(X_plotF0), color = 'black')
+    if id==len(slopearr)-1:
+        axs["left column"].plot(X_plotF0, F0(X_plotF0), color = 'black', label="Retirement Profit")
     axs["left column"].set_xlim(X_low,X_high)
     axs["left column"].set_title("Profit $F(W)$")
     axs["left column"].grid(linestyle=':')
     axs["left column"].legend()
-    axs["left column"].set_xlabel("$W$")
+
+    axs["left down"].plot(X_plot, fitted_a+fitted_h, color = color_one, label = "$\\xi={}$".format(xiarr[id]))
+    axs["left down"].plot(X_plot, ODE_a+ODE_h, color = 'black', linestyle='--')
+    axs["left down"].set_ylim(-1,1.5)
+    axs["left down"].set_xlim(X_low,X_high)
+    axs["left down"].set_title("Drift of Output $X$")
+    axs["left down"].grid(linestyle=':')
+    axs["left down"].set_xlabel("$W$")
+
+
 
     axs["right top"].plot(X_plot, fitted_a, color = color_one, label = "$\\xi={}$".format(xiarr[id]))
     axs["right top"].plot(X_plot, ODE_a, color = 'black', linestyle='--')
@@ -218,10 +228,11 @@ for id in range(len(slopearr)):
     axs["right down"].plot(X_plot, ODE_drift, color = 'black', linestyle='--')
     # axs["right down"].set_ylim(0, 0.1)
     axs["right down"].set_xlim(X_low,X_high)
-    axs["right down"].set_title("Drift of $W$")
+    axs["right down"].set_title("Drift of Continuation Payoff $W$")
     axs["right down"].grid(linestyle=':')
     axs["right down"].set_xlabel("$W$")
 
+# axs["left column"].plot(X_plotF0, F0(X_plotF0), color = 'black', label="Retirement Profit")
 
 
 plt.savefig('./Figure/' +savefolder+ '/' + figureName + '_All_{}.pdf'.format(len(xiarr)))
@@ -274,7 +285,7 @@ for id in range(len(slopearr)):
     axs["left top"].set_title("Difference in Profit $F(W)$")
     axs["left top"].set_xlim(X_low,X_high)
     axs["left top"].grid(linestyle=':')
-    axs["left top"].set_xlabel("$W$")
+    # axs["left top"].set_xlabel("$W$")
 
     axs["left mid"].plot(X_plot, Diff_a, color = color_one, label = "$\\xi={}$".format(xiarr[id]))
     axs["left mid"].set_title("Difference in Effort $\\alpha(W)$")
@@ -292,7 +303,7 @@ for id in range(len(slopearr)):
     axs["right mid"].set_xlim(X_low,X_high)
 
     axs["down"].plot(X_plot, Diff_drift, color = color_one, label = "$\\xi={}$".format(xiarr[id]))
-    axs["down"].set_title("Difference in Drift of $W$")
+    axs["down"].set_title("Difference in Drift of Continuation Payoff $W$")
     axs["down"].grid(linestyle=':')
     axs["down"].set_xlim(X_low,X_high)
     axs["down"].legend()
@@ -312,7 +323,7 @@ fig, axs = plt.subplot_mosaic(
 [["left column", "right top"],
 ["left column", "right mid"],
 ["left column", "right dis"],
-["left column", "right down"]], figsize=(20, 10), sharex=True
+["left down", "right down"]], figsize=(25, 15), sharex=True
 )
 
 
@@ -377,12 +388,21 @@ for id in range(len(slopearr)):
     axs["left column"].plot(X_plot, fitted_V, color = color_one, label = "$\\xi={}$".format(xiarr[id]))
     axs["left column"].plot(X_plot, ODE_F, color = 'black', linestyle='--')
     axs["left column"].set_ylim(-1,0.15)
-    axs["left column"].plot(X_plotF0, F0(X_plotF0), color = 'black')
+    if id==len(slopearr)-1:
+        axs["left column"].plot(X_plotF0, F0(X_plotF0), color = 'black', label="Retirement Profit")
     axs["left column"].set_xlim(X_low,X_high)
     axs["left column"].set_title("Profit $F(W)$")
     axs["left column"].grid(linestyle=':')
     axs["left column"].legend()
-    axs["left column"].set_xlabel("$W$")
+
+    axs["left down"].plot(X_plot, fitted_a+fitted_h, color = color_one, label = "$\\xi={}$".format(xiarr[id]))
+    axs["left down"].plot(X_plot, ODE_a+ODE_h, color = 'black', linestyle='--')
+    axs["left down"].set_ylim(-1,1.5)
+    axs["left down"].set_xlim(X_low,X_high)
+    axs["left down"].set_title("Drift of Output $X$")
+    axs["left down"].grid(linestyle=':')
+    axs["left down"].set_xlabel("$W$")
+
 
     axs["right top"].plot(X_plot, fitted_a, color = color_one, label = "$\\xi={}$".format(xiarr[id]))
     axs["right top"].plot(X_plot, ODE_a, color = 'black', linestyle='--')
@@ -412,10 +432,11 @@ for id in range(len(slopearr)):
     axs["right down"].plot(X_plot, ODE_drift, color = 'black', linestyle='--')
     axs["right down"].set_ylim(-0.1, 0.1)
     axs["right down"].set_xlim(X_low,X_high)
-    axs["right down"].set_title("Drift of $W$")
+    axs["right down"].set_title("Drift of Continuation Payoff $W$")
     axs["right down"].grid(linestyle=':')
     axs["right down"].set_xlabel("$W$")
 
+# axs["left column"].plot(X_plotF0, F0(X_plotF0), color = 'black', label="Retirement Profit")
 
 
 plt.savefig('./Figure/' +savefolder+ '/' + figureName + '_All_Stop_{}.pdf'.format(len(xiarr)))
@@ -516,7 +537,7 @@ for id in range(len(slopearr)):
     axs["right mid"].set_xlim(X_low,X_high)
 
     axs["down"].plot(X_plot, Diff_drift, color = color_one, label = "$\\xi={}$".format(xiarr[id]))
-    axs["down"].set_title("Difference in Drift of $W$")
+    axs["down"].set_title("Difference in Drift of Continuation Payoff $W$")
     axs["down"].grid(linestyle=':')
     axs["down"].set_xlim(X_low,X_high)
     axs["down"].legend()
